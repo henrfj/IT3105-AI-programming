@@ -21,7 +21,7 @@ def create_triangle_board():
     '''
     Testing the board creation method for triangle board.
     '''
-    size = 4 # Height of triangle
+    size = 5 # Height of triangle
     k = 1
     board = Board(BT.TRIANGLE, size, k)
     printboard(board, size)

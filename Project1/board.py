@@ -32,8 +32,7 @@ class Board:
         else:
             print("Board must be Diamond or triangle")
             print("Defaulting to Diamond board")
-            self.state = self.diamond_board(initial_holes)
-        
+            self.state = self.diamond_board(initial_holes)  
         
 
     def diamond_board(self, initial_holes):
@@ -98,10 +97,3 @@ class Board:
                 n+=1
 
         return board
-
-    def initialize_board(self, initial_holes):
-        '''
-        Alters the state, to contain #intial_holes holes,
-        ready to start playing
-        '''
-        
