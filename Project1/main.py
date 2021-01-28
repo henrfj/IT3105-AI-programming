@@ -22,7 +22,9 @@ class Main:
 
 
 def testing():
+    # 1
     SWTest.create_diamond_board()
-    
+    # 2
+    SWTest.create_triangle_board()
     
 testing()
