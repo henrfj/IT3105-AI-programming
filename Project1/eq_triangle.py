@@ -1,0 +1,4 @@
+'''
+Equilateral triangle class.
+
+'''
