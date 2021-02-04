@@ -9,3 +9,6 @@
 ### Visualization
 - find input values of networkX
 
+### SW class:
+- legal-moves function
+- Remove if test on start of all directions. One is enough!

@@ -23,8 +23,12 @@ class Main:
 
 def testing():
     # 1
-    SWTest.create_diamond_board()
+    #SWTest.create_diamond_board()
     # 2
-    SWTest.create_triangle_board()
-    
+    #SWTest.create_triangle_board()
+    # 3
+    #SWTest.find_child_states()
+    # 5
+    SWTest.convert_to_matrix()
+
 testing()
