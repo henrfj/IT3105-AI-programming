@@ -22,8 +22,8 @@ class SW:
 
     def make_move(self, state, pos1, pos2):
         ''' 
-        Makes a move, and returns the new state
-        Moves one peg and removes the skipped peg
+        Makes a single move, and returns the new state.
+        Moves one peg and removes the skipped peg. Used to find child states.
         pos1 = hole, pos2 = peg to move. (row, col)
         '''
         
@@ -159,8 +159,9 @@ class SW:
         return child_states
 
     def final_state(self, state, board_type, board_size):
-        '''Finds out if there are no more possible moves. 
-            Returns True if that is the case.
+        '''
+        Finds out if there are no more possible moves. 
+        Returns True if that is the case.
         '''
         moves = self.child_states(state, board_type, board_size)
         # No more moves left
@@ -168,7 +169,42 @@ class SW:
             return True
         return False
 
-    def state_to_array(self, state, size):
+    def pins_left(self, state, board_type, board_size):
+        '''Calculate number of pins left
+        '''
+        # Number of pins
+        n = 0
+        for row in range(board_size):
+            for col in range(board_size):
+                if state[row][col].get_status() == Status.PEG:
+                    n+=1
+
+        return n
+
+    def reward(self, state_1, state_2, board_type, board_size):
+        '''
+        Returns reward for a transition
+        Idea: favourise removing edge-pins, as you need them down first.
+        Every move is guaranteed to bring down a pin, so no need to reward that.
+
+        Thought: as all edge-pins are removed, the outer pins do become edge pins...
+        ''' 
+
+        win_reward = 1000
+        reward = 0
+        n_pegs = self.pins_left(state_2, board_type, board_size)
+
+        if n_pegs == 1:
+            print("YOU WON!")
+            reward = win_reward
+
+        elif self.final_state(state_2, board_type, board_size):
+            print("You lost... ")
+            reward = -board_size * n_pegs 
+        print("REWARD:", reward)
+        return reward
+
+    def state_to_array(self, state, size): # Helperfunction
         '''Translates a board to a simple np.array
         '''
         arr = np.zeros((size, size), int)
@@ -184,12 +220,5 @@ class SW:
                     raise Exception("This is no state, wrong Statuses")
         return arr
 
-    def reward(self, state_1, state_2, board_type, board_size):
-        '''
-        Returns reward for a transition
-        Idea: favourise removing edge-pins, as you need them down first.
-        '''
-        edge_pin_reward = 50
-        winning_reward = 1000
-        
-        pass
+    def set_board_state(self, new_state): 
+            self.board.state = new_state

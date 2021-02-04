@@ -4,13 +4,48 @@ Test functions. Testing the simworld and the visualization of it.
 '''
 
 from SW_peg_solitaire import *
+from SW_visualization import Display
 
+
+def visualization_test():
+    '''
+    '''
+    # First, make and print a SW.
+    size = 5
+    k = 1
+    sim = SW(BT.DIAMOND, size, k)
+    print_state(sim.board.state, sim.board_type, sim.board_size)
+    
+    # Then try to display it using Display
+    arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+
+    display = Display(10)
+    display.display_board(arr_state, sim.board_type, sim.board_size)
+
+
+
+
+def pins_left_test():
+    # First, make and print a SW
+    size = 7
+    k = 8
+    sim = SW(BT.DIAMOND, size, k)
+    print_state(sim.board.state, sim.board_type, sim.board_size)
+    print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
+
+    while(not sim.final_state(sim.board.state, sim.board_type, sim.board_size)):
+        child_states = sim.child_states(sim.board.state, sim.board_type, sim.board_size)
+        sim.set_board_state(child_states[0])
+        print_state(sim.board.state, sim.board_type, sim.board_size)
+        print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
+
+    sim.reward(sim.board.state, sim.board.state, sim.board_type, sim.board_size)
 
 def find_child_states():
     # First, make and print a SW
     size = 7
     k = 1
-    sim = SW(BT.TRIANGLE, size, k)
+    sim = SW(BT.DIAMOND, size, k)
     print_state(sim.board.state, sim.board_size, sim.board_type)
 
     # Then, print out child-states
@@ -71,7 +106,7 @@ def printboard(board, size):
     s += "]"
     print(s)
 
-def print_state(state, size, type):
+def print_state(state, type, size):
     '''
     Function for printing states, used for debugging.
     '''
