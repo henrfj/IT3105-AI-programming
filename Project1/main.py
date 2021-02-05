@@ -33,8 +33,8 @@ def testing():
     # 5
     #SWTest.convert_to_matrix()
     # 6
-    #SWTest.pins_left_test()
+    SWTest.pins_left_test()
     # 7
-    SWTest.visualization_test()
+    #SWTest.visualization_test()
 
 testing()

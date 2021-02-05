@@ -12,17 +12,15 @@ def visualization_test():
     '''
     # First, make and print a SW.
     size = 5
-    k = 1
+    k = 3
     sim = SW(BT.DIAMOND, size, k)
     print_state(sim.board.state, sim.board_type, sim.board_size)
     
     # Then try to display it using Display
     arr_state = sim.state_to_array(sim.board.state, sim.board_size)
 
-    display = Display(10)
+    display = Display()
     display.display_board(arr_state, sim.board_type, sim.board_size)
-
-
 
 
 def pins_left_test():
@@ -33,11 +31,19 @@ def pins_left_test():
     print_state(sim.board.state, sim.board_type, sim.board_size)
     print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
 
+    # With display!
+    display = Display()
     while(not sim.final_state(sim.board.state, sim.board_type, sim.board_size)):
         child_states = sim.child_states(sim.board.state, sim.board_type, sim.board_size)
         sim.set_board_state(child_states[0])
-        print_state(sim.board.state, sim.board_type, sim.board_size)
-        print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
+        
+        # Print result
+        #print_state(sim.board.state, sim.board_type, sim.board_size)
+        #print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
+
+        # Display result
+        arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+        display.display_board(arr_state, sim.board_type, sim.board_size)
 
     sim.reward(sim.board.state, sim.board.state, sim.board_type, sim.board_size)
 

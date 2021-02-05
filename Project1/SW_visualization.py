@@ -11,9 +11,9 @@ class Display:
     and nodes of several colours. 
     '''
 
-    def __init__(self, spacing): 
+    def __init__(self): 
         self.graph = nx.Graph()
-        self.spacing = spacing
+        self.color_map = []
 
     def display_board(self, state, board_type, board_size):
         '''
@@ -21,9 +21,12 @@ class Display:
         this method takes the array / integer version.
         '''
         neighbour_matrix = self.transform(state, board_type, board_size)
-        print(neighbour_matrix)
+        # print(neighbour_matrix)
         self.graph = nx.from_numpy_array(neighbour_matrix)
-        nx.draw(self.graph)
+
+        self.color_nodes(state, board_type, board_size)
+
+        nx.draw(self.graph, node_color=self.color_map, with_labels=True)
         plt.show()
 
     def transform(self, state, board_type, board_size):
@@ -57,8 +60,21 @@ class Display:
         return adjacency
 
 
-    def color_nodes(self, arr_state, board_type, board_size): ## function that creates nodes and edges.
-        pass
-    
-    
+    def color_nodes(self, state, board_type, board_size): 
+        '''
+        Colors the nodes accordingly.
+        black: peg, white: hole
+        '''
+        # Iterator
+        i = 0
+        for node in self.graph:
+            row = i // board_size
+            col = i - row*board_size
+            if state[row][col] == 1:
+                # Its a peg
+                self.color_map.append("black")
+            
+            elif state[row][col] == 0:
+                self.color_map.append("white")
 
+            i+=1

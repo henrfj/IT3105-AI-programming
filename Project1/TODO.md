@@ -3,12 +3,11 @@
 ## Simworld
 
 ### Board
-- Add "update-neighbours" iteration, or use other idea to store neighbourhood.
-=> maybe simply calculate neighbours in game logic. (Rigid system exists!)
+- 
 
 ### Visualization
-- find input values of networkX
+- Rescale the window and see if that fixes the "smashed" graph problem.
 
 ### SW class:
-- legal-moves function
-- Remove if test on start of all directions. One is enough!
+- Find out what kind of *action* I want to pass: Maybe a tuple or just the integer arrays of child states?
+- 
