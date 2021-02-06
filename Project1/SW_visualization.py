@@ -14,6 +14,7 @@ class Display:
     def __init__(self): 
         self.graph = nx.Graph()
 
+
     def display_board(self, state, board_type, board_size):
         '''
         Instead of the state we are used to, 
@@ -26,6 +27,7 @@ class Display:
         # Color nodes according to state matrix
         color_map = self.color_nodes(state, board_type, board_size)
 
+        plt.figure(figsize=(10,10))
         nx.draw(self.graph, node_color=color_map, with_labels=True)
 
         #nx.draw(self.graph, with_labels=True)
@@ -148,3 +150,39 @@ class Display:
                 n_l_counter += 1
 
         return color_map
+
+
+    def node_pos(self, state, board_type, board_size):
+        nodepos={}
+        if board_type == BT.DIAMOND:
+            # Iterator, node number
+            i = 0
+            for i in range(board_size*board_size):
+                row = i // board_size
+                col = i - row*board_size
+                
+                nodepos[i] = (row, col)
+                    
+                i+=1
+
+        elif board_type == BT.TRIANGLE:
+            # Keeping track of layers of triangle
+            n_in_layer = 1 # Number of nodes in this layer/row number
+            n_l_counter = 1 #Current position within layer/col number
+            
+            size = 0
+            for i in range(1, board_size+1):
+                size += i
+
+            for i in range(size):
+                if n_l_counter > n_in_layer:
+                    # One more node per layer
+                    # We are in next layer
+                    n_in_layer += 1
+                    n_l_counter = 1
+                
+                nodepos[i] = (n_in_layer-1, n_l_counter-1)
+
+                n_l_counter += 1
+
+        return nodepos

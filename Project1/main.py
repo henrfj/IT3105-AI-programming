@@ -35,6 +35,8 @@ def testing():
     # 6
     #SWTest.pins_left_test()
     # 7
-    SWTest.visualization_test()
+    #SWTest.visualization_test()
+    # 8
+    SWTest.animation_test()
 
 testing()

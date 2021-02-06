@@ -4,8 +4,69 @@ Test functions. Testing the simworld and the visualization of it.
 '''
 
 from SW_peg_solitaire import *
-from SW_visualization import Display
+from SW_visualization import *
+from matplotlib import animation
+import matplotlib.pyplot as plt
 
+def animation_test():
+    '''
+    Try to animate the shit 
+    '''
+    # First, make and print a SW
+    size = 7
+    k = 4
+    sim = SW(BT.TRIANGLE, size, k)
+    print_state(sim.board.state, sim.board_type, sim.board_size)
+
+    # Create display!
+    display = Display()
+    
+    # Animation variables
+    moves_used = 0
+    arr_states = []
+    
+    # Generate first arr_state
+    arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+    arr_states.append(arr_state)
+
+
+    while(not sim.final_state(sim.board.state, sim.board_type, sim.board_size)):
+        child_states = sim.child_states(sim.board.state, sim.board_type, sim.board_size)
+        # Choose first and best move
+        sim.set_board_state(child_states[0])
+        moves_used += 1
+
+        # Add to list of moves
+        arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+        arr_states.append(arr_state)
+
+
+
+    # Build plot
+    fig, ax = plt.subplots(figsize=(6,4))
+
+    def update(num):
+        '''
+        Made to help animator animate the board.
+        '''
+        ax.clear()
+        state = arr_states[num]
+        # Produce a neighbourhood matrix
+        neighbour_matrix = display.transform(state, sim.board_type, sim.board_size)
+        # Use networkX to make a graph based on the neighbourhood matrix
+        display.graph = nx.from_numpy_array(neighbour_matrix)
+        # Color nodes according to state matrix
+        color_map = display.color_nodes(state, sim.board_type, sim.board_size)
+        # Try something new: fixed node-positions
+        nodepos = display.node_pos(state, sim.board_type, sim.board_size)
+        # Draw the current frame
+        nx.draw(display.graph, node_color=color_map, with_labels=True,pos=nodepos)
+
+    # Make animation
+    ani = animation.FuncAnimation(fig, update, frames=(moves_used+1), interval=1000, repeat=False)
+    plt.show()
+
+    sim.reward(sim.board.state, sim.board.state, sim.board_type, sim.board_size)
 
 def visualization_test():
     '''
@@ -13,7 +74,7 @@ def visualization_test():
     
     # First, make and print a SW.
     size = 5
-    k = 1
+    k = 9
     sim = SW(BT.TRIANGLE, size, k)
     print_state(sim.board.state, sim.board_type, sim.board_size)
     
@@ -36,26 +97,30 @@ def visualization_test():
     display = Display()
     display.display_board(arr_state, sim.board_type, sim.board_size)
 
-
-    
-
 def pins_left_test():
     # First, make and print a SW
-    size = 7
-    k = 8
-    sim = SW(BT.DIAMOND, size, k)
+    size = 6
+    k = 3
+    sim = SW(BT.TRIANGLE, size, k)
     print_state(sim.board.state, sim.board_type, sim.board_size)
     print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
 
     # With display!
     display = Display()
+
+    # Display result
+    arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+    display.display_board(arr_state, sim.board_type, sim.board_size)
+
+
+    
     while(not sim.final_state(sim.board.state, sim.board_type, sim.board_size)):
         child_states = sim.child_states(sim.board.state, sim.board_type, sim.board_size)
         sim.set_board_state(child_states[0])
         
         # Print result
-        #print_state(sim.board.state, sim.board_type, sim.board_size)
-        #print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
+        print_state(sim.board.state, sim.board_type, sim.board_size)
+        print("PEGs left:", sim.pins_left(sim.board.state, sim.board_type,  sim.board_size))
 
         # Display result
         arr_state = sim.state_to_array(sim.board.state, sim.board_size)
