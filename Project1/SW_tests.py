@@ -10,9 +10,23 @@ from SW_visualization import Display
 def visualization_test():
     '''
     '''
+    
     # First, make and print a SW.
     size = 5
-    k = 3
+    k = 1
+    sim = SW(BT.TRIANGLE, size, k)
+    print_state(sim.board.state, sim.board_type, sim.board_size)
+    
+    # Then try to display it using Display
+    arr_state = sim.state_to_array(sim.board.state, sim.board_size)
+
+    display = Display()
+    display.display_board(arr_state, sim.board_type, sim.board_size)
+    
+    
+    # First, make and print a SW.
+    size = 3
+    k = 1
     sim = SW(BT.DIAMOND, size, k)
     print_state(sim.board.state, sim.board_type, sim.board_size)
     
@@ -22,6 +36,8 @@ def visualization_test():
     display = Display()
     display.display_board(arr_state, sim.board_type, sim.board_size)
 
+
+    
 
 def pins_left_test():
     # First, make and print a SW
