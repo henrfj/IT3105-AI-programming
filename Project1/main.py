@@ -5,10 +5,9 @@ Main file:
 
 '''
 
-from SW_peg_solitaire import *
-from rl_engine import *
+from SW_peg_solitaire import SW, BT
+from rl_agent import Agent
 import SW_tests as SWTest
-
 
 
 class Main:
@@ -37,6 +36,8 @@ def testing():
     # 7
     #SWTest.visualization_test()
     # 8
-    SWTest.animation_test()
+    #SWTest.animation_test()
+    # 9
+    SWTest.animation_test_actions()
 
 testing()

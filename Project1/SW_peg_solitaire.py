@@ -3,22 +3,114 @@ The simulated worlds (SW) for this project, peg solitaire.
 
 '''
 
-from board import *
+
 import copy
+import random as rd
+from enum import Enum
+import numpy as np
+
+
+# Enum  for easier to read code
+class BT(Enum):
+    DIAMOND = 0
+    TRIANGLE = 1
 
 class SW:
     '''
     SimWorld class for the game peg "solitaire"
     '''
-    def __init__(self, board_type: BT, size, k):
-        #
-        self.board = Board(board_type, size, k)
-
-        self.initial_state = self.board.state
+    def __init__(self, board_type: BT, board_size, initial_holes):
         
-        self.board_size = size
-
+        # 
+        self.state = self.new_board(board_type, board_size, initial_holes)
+        
+        #
+        self.board_size = board_size
         self.board_type = board_type
+        self.initial_holes = initial_holes
+
+
+    def new_board(self, board_type, board_size, initial_holes):
+        '''
+        Create a new board for a new game.
+        '''
+        if (board_type is BT.DIAMOND):
+            '''
+            Generate a size*size list with nodes.
+            Nodes are initially filled with pegs
+            '''
+            # Create a empty (zero-filled) size x size matrix.
+            board = np.zeros((board_size, board_size), int)
+            # Fill the board with default size, being filled with pegs.
+            for row in range(0,board_size):
+                for col in range(0, board_size):
+                    board[row][col] = 1
+
+            '''Now initialize the holes'''
+            # Number of holes inserted. (Initial_holes >= 1)
+            n = 1
+            # Initial hole created close to the center
+            board[(board_size//2)][(board_size//2)] = 0
+
+            # Crude, but doing the job
+            while n < initial_holes:
+                row = rd.randint(0, board_size-1)
+                col = rd.randint(0, board_size-1)
+
+                if (board[row][col] != 0):
+                    board[row][col] = 0
+                    n+=1
+
+            return board
+
+        elif (board_type is BT.TRIANGLE):
+            '''
+            TRIANGLE
+            Generate a size*size list with holes.
+            Holes are initially filled with pegs.
+            Unused parts of board filled with "UNUSED nodes".
+            '''
+            # Create a empty (zero-filled) size x size matrix, able to contain Holes
+            board = np.zeros((board_size, board_size), int)
+            # Fill the board with Pegs.
+            for row in range(0,board_size):
+                for col1 in range(0, row+1):
+                    # Adding pegged nodes
+                    board[row][col1] = 1
+                for col2 in range(row+1, board_size):
+                    # Adding unused nodes
+                    board[row][col2] = -1
+            
+            '''Now initialize the holes'''
+            # Number of holes inserted. (Initial_holes >= 1)
+            n = 1
+            # Initial hole created close to the center of the triangle
+            board[(board_size//2)][(board_size//2)//2] = 0
+
+            # Crude, but doing the job
+            while n < initial_holes:
+                row = rd.randint(0, board_size-1)
+                col = rd.randint(0, board_size-1)
+
+                if (board[row][col] == 1):
+                    board[row][col] = 0
+                    n+=1
+
+            return board
+        else:
+            raise Exception("This is no board type")
+
+
+    def actions(self, state, board_type, board_size):
+        '''
+        Returns python dictionary of all possible actions, given state.
+        Basically translates the output from child_states, into dictionary.
+        '''
+        actions = {}
+        children = self.child_states(state, board_type, board_size)
+        for i in range(len(children)):
+            actions[i] = children[i]
+        return actions
 
     def make_move(self, state, pos1, pos2):
         ''' 
@@ -32,9 +124,9 @@ class SW:
         new_state = copy.deepcopy(state)
 
         # Add a peg to the previously empty socket (pos1)
-        if new_state[pos1[0],pos1[1]].get_status() != Status.EMPTY:
+        if new_state[pos1[0],pos1[1]] != 0:
             raise Exception("This should have been empty")
-        new_state[pos1[0],pos1[1]].set_status(Status.PEG)
+        new_state[pos1[0],pos1[1]] = 1
 
         # Remove the peg that was skipped over:
         row_distance = pos1[0] - pos2[0]
@@ -43,68 +135,69 @@ class SW:
         row_pos = int(pos1[0] - row_distance/2)
         col_pos = int(pos1[1] - col_distance/2)
 
-        if new_state[row_pos,col_pos].get_status() != Status.PEG:
+        if new_state[row_pos,col_pos] != 1:
             raise Exception("This should have been PEGGED")
-        new_state[row_pos,col_pos].set_status(Status.EMPTY)
+        new_state[row_pos,col_pos] = 0
 
         # Remove the peg from where it skipped (pos2)
-        if new_state[pos2[0],pos2[1]].get_status() != Status.PEG:
+        if new_state[pos2[0],pos2[1]] != 1:
             raise Exception("This should have been PEGGED")
-        new_state[pos2[0],pos2[1]].set_status(Status.EMPTY)
+        new_state[pos2[0],pos2[1]] = 0
 
         return new_state
 
     def child_states(self, state, board_type, board_size):
-        # Finds all possible child-states given a parent state
-
+        '''
+        Finds all possible child-states given a parent state
+        '''
         # Maybe smart to dictionarize this array
         child_states = []
         for row in range(board_size):
             for col in range(board_size):
-                if state[row][col].get_status() == Status.EMPTY:
+                if state[row][col] == 0:
                 # Empty hole found
 
                     # Direction north
                     if(row-1) >= 0:
                         # In bound
-                        if state[row-1][col].get_status() == Status.PEG:
+                        if state[row-1][col] == 1:
                             # This peg can be skipped
                             if (row-2) >= 0:
                                 # In bound
-                                if state[row-2][col].get_status() == Status.PEG:
+                                if state[row-2][col] == 1:
                                     # This peg can jump
                                     child_states.append(self.make_move(state, (row, col), (row-2, col)))
 
                     # Direction west
                     if(col-1) >= 0:
                         # In bound
-                        if state[row][col-1].get_status() == Status.PEG:
+                        if state[row][col-1] == 1:
                             # This peg can be skipped
                             if (col-2) >= 0:
                                 # In bound
-                                if state[row][col-2].get_status() == Status.PEG:
+                                if state[row][col-2] == 1:
                                     # This peg can jump
                                     child_states.append(self.make_move(state, (row, col), (row, col-2)))
 
                     # Direction south
                     if(row+1)<board_size:
                         # In bound
-                        if state[row+1][col].get_status() == Status.PEG:
+                        if state[row+1][col] == 1:
                             # This peg can be skipped
                             if (row+2) < board_size:
                                 # In bound
-                                if state[row+2][col].get_status() == Status.PEG:
+                                if state[row+2][col] == 1:
                                     # This peg can jump
                                     child_states.append(self.make_move(state, (row, col), (row+2, col)))
                 
                     # Direction east
                     if(col+1) < board_size:
                         # In bound
-                        if state[row][col+1].get_status() == Status.PEG:
+                        if state[row][col+1] == 1:
                             # This peg can be skipped
                             if (col+2) < board_size:
                                 # In bound
-                                if state[row][col+2].get_status() == Status.PEG:
+                                if state[row][col+2] == 1:
                                     # This peg can jump
                                     child_states.append(self.make_move(state, (row, col), (row, col+2)))
                 
@@ -113,22 +206,22 @@ class SW:
                         # Direction south-west: (r+1, c-1)
                         if (col-1)>=0 and (row+1) < board_size:
                             # In bound
-                            if state[row+1][col-1].get_status() == Status.PEG:
+                            if state[row+1][col-1] == 1:
                                 # This peg can be skipped
                                 if (col-2) >= 0 and (row+2) < board_size:
                                     # In bound
-                                    if state[row+2][col-2].get_status() == Status.PEG:
+                                    if state[row+2][col-2] == 1:
                                         # This peg can jump
                                         child_states.append(self.make_move(state, (row, col), (row+2, col-2)))
                                     
                         # Direction north-east: (r-1, c+1)
                         if (row-1)>=0 and (col+1) < board_size:
                             # In bound
-                            if state[row-1][col+1].get_status() == Status.PEG:
+                            if state[row-1][col+1] == 1:
                                 # This peg can be skipped
                                 if (row-2) >= 0 and (col+2) < board_size:
                                     # In bound
-                                    if state[row-2][col+2].get_status() == Status.PEG:
+                                    if state[row-2][col+2] == 1:
                                         # This peg can jump
                                         child_states.append(self.make_move(state, (row, col), (row-2, col+2)))
                 
@@ -137,22 +230,22 @@ class SW:
                         # Direction south-east: (r+1, c+1)
                         if (col+1) < board_size and (row+1) < board_size:
                             # In bound
-                            if state[row+1][col+1].get_status() == Status.PEG:
+                            if state[row+1][col+1] == 1:
                                 # This peg can be skipped
                                 if (col+2) < board_size and (row+2) < board_size:
                                     # In bound
-                                    if state[row+2][col+2].get_status() == Status.PEG:
+                                    if state[row+2][col+2] == 1:
                                         # This peg can jump
                                         child_states.append(self.make_move(state, (row, col), (row+2, col+2)))
 
                         # Direction north-west: (r-1, c-1)
                         if (row-1) >= 0 and (col-1) >= 0:
                             # In bound
-                            if state[row-1][col-1].get_status() == Status.PEG:
+                            if state[row-1][col-1] == 1:
                                 # This peg can be skipped
                                 if (row-2) >= 0 and (col-2) >= 0:
                                     # In bound
-                                    if state[row-2][col-2].get_status() == Status.PEG:
+                                    if state[row-2][col-2] == 1:
                                         # This peg can jump
                                         child_states.append(self.make_move(state, (row, col), (row-2, col-2)))
 
@@ -169,14 +262,14 @@ class SW:
             return True
         return False
 
-    def pins_left(self, state, board_type, board_size):
+    def pegs_left(self, state, board_type, board_size):
         '''Calculate number of pins left
         '''
         # Number of pins
         n = 0
         for row in range(board_size):
             for col in range(board_size):
-                if state[row][col].get_status() == Status.PEG:
+                if state[row][col] == 1:
                     n+=1
 
         return n
@@ -192,7 +285,7 @@ class SW:
 
         win_reward = 1000
         reward = 0
-        n_pegs = self.pins_left(state_2, board_type, board_size)
+        n_pegs = self.pegs_left(state_2, board_type, board_size)
 
         if n_pegs == 1:
             print("YOU WON!")
@@ -204,21 +297,8 @@ class SW:
         print("REWARD:", reward)
         return reward
 
-    def state_to_array(self, state, size): # Helperfunction
-        '''Translates a board to a simple np.array
-        '''
-        arr = np.zeros((size, size), int)
-        for row in range(size):
-            for col in range(size):
-                if state[row][col].get_status() == Status.PEG:
-                    arr[row][col] = 1
-                elif state[row][col].get_status() == Status.EMPTY:
-                    arr[row][col] = 0
-                elif state[row][col].get_status() == Status.UNUSED:
-                    arr[row][col] = -1
-                else: 
-                    raise Exception("This is no state, wrong Statuses")
-        return arr
-
     def set_board_state(self, new_state): 
-            self.board.state = new_state
+            '''
+            Simple setter for updating the state of the board.
+            '''
+            self.state = new_state

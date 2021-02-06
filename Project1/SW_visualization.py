@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 # My own modules
-from board import BT
+from SW_peg_solitaire import BT
 
 class Display:
     '''
