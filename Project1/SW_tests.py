@@ -16,9 +16,9 @@ def animation_test_actions():
     Try to animate the shit 
     '''
     # First, make and print a SW
-    size = 7
-    k = 3
-    sim = SW(BT.TRIANGLE, size, k)
+    size = 5
+    k = 7
+    sim = SW(BT.DIAMOND, size, k)
     print_state(sim.state, sim.board_type, sim.board_size)
 
     # Create display!
@@ -32,8 +32,8 @@ def animation_test_actions():
     states.append(sim.state)
 
 
-    while(not sim.final_state(sim.state, sim.board_type, sim.board_size)):
-        actions = sim.actions(sim.state, sim.board_type, sim.board_size)
+    while(not sim.final_state(sim.state)):
+        actions = sim.actions()
         # Choose first and best move
 
         # TODO: Instead of choosing first move, make an actual RL
@@ -69,7 +69,7 @@ def animation_test_actions():
     ani = animation.FuncAnimation(fig, update, frames=(moves_used+1), interval=1000, repeat=False)
     plt.show()
 
-    sim.reward(sim.state, sim.state, sim.board_type, sim.board_size)
+    sim.reward(sim.state, sim.state)
 
 
 # def animation_test():

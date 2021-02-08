@@ -25,15 +25,21 @@ class SW:
         self.board_type = board_type
         self.initial_holes = initial_holes
 
-        # Initiate some initial board
-        self.state = np.zeros(board_size**2)
+        # Initiate some initial board, then update it
+        #self.state = np.zeros(board_size**2)
         self.new_board()
+        # To have same board over several episodes
+        self.base_board = np.copy(self.state)
 
-    def actions(self, state, board_type, board_size):
+    def actions(self):
         '''
         Returns python dictionary of all possible actions, given state.
         Basically translates the output from child_states, into dictionary.
         '''
+        board_type = self.board_type 
+        board_size = self.board_size 
+        state = self.state
+
         actions = {}
         children = self.child_states(state, board_type, board_size)
         for i in range(len(children)):
@@ -179,11 +185,14 @@ class SW:
 
         return child_states
 
-    def final_state(self, state, board_type, board_size):
+    def final_state(self, state):
         '''
         Finds out if there are no more possible moves. 
         Returns True if that is the case.
         '''
+        board_type = self.board_type 
+        board_size = self.board_size 
+
         moves = self.child_states(state, board_type, board_size)
         # No more moves left
         if len(moves) == 0:
@@ -202,7 +211,7 @@ class SW:
 
         return n
 
-    def reward(self, state_1, state_2, board_type, board_size):
+    def reward(self, state_1, state_2):
         '''
         Returns reward for a transition
         Idea: favourise removing edge-pins, as you need them down first.
@@ -210,22 +219,29 @@ class SW:
 
         Thought: as all edge-pins are removed, the outer pins do become edge pins...
         ''' 
+        board_type = self.board_type 
+        board_size = self.board_size
+
         # Different rewards
         win_reward = 1000
-        move_reward = 0
+        move_reward = 1
 
-        # All moves are guaranteed good
+        # All moves are guaranteed pegs down.
         reward = move_reward
-        n_pegs = self.pegs_left(state_2, board_type, board_size)
 
+        # To determine if we have won.
+        n_pegs = self.pegs_left(state_2, board_type, board_size)
+        # For final states
         if n_pegs == 1:
-            #print("YOU WON!")
+            print("YOU WON!")
             reward = win_reward
 
-        elif self.final_state(state_2, board_type, board_size):
+        elif self.final_state(state_2):
             print("You lost... ")
             reward = -board_size * n_pegs 
         print("REWARD:", reward)
+        
+        
         return reward
 
     def set_board_state(self, new_state): 
@@ -308,5 +324,9 @@ class SW:
         else:
             raise Exception("This is no board type")
 
-
+    def reset_board(self):
+        '''
+        Reset board in between episodes during learning. 
+        '''
+        self.state = np.copy(self.base_board)
 
