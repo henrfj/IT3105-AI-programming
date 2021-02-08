@@ -6,18 +6,17 @@ Main file:
 '''
 
 from SW_peg_solitaire import SW, BT
-from rl_agent import Agent
+from RL_agent import Agent
 import SW_tests as SWTest
 
 
-class Main:
-    def __init__(self, parameters):
-        self.parameters = parameters
-        sw = SW(parameters[0], parameters[1], parameters[2])
+def main(parameters):
         
+    # Running
+    #TODO: run the simulations after setting parameters
+
         
-        # Running
-        #TODO: run the simulations after setting parameters
+    testing()
 
    
 
@@ -40,4 +39,5 @@ def testing():
     # 9
     SWTest.animation_test_actions()
 
-testing()
+parameters = []
+main(parameters)

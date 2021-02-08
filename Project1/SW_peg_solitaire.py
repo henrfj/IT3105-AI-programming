@@ -20,86 +20,14 @@ class SW:
     SimWorld class for the game peg "solitaire"
     '''
     def __init__(self, board_type: BT, board_size, initial_holes):
-        
-        # 
-        self.state = self.new_board(board_type, board_size, initial_holes)
-        
-        #
+        # Setting recurring parameters
         self.board_size = board_size
         self.board_type = board_type
         self.initial_holes = initial_holes
 
-
-    def new_board(self, board_type, board_size, initial_holes):
-        '''
-        Create a new board for a new game.
-        '''
-        if (board_type is BT.DIAMOND):
-            '''
-            Generate a size*size list with nodes.
-            Nodes are initially filled with pegs
-            '''
-            # Create a empty (zero-filled) size x size matrix.
-            board = np.zeros((board_size, board_size), int)
-            # Fill the board with default size, being filled with pegs.
-            for row in range(0,board_size):
-                for col in range(0, board_size):
-                    board[row][col] = 1
-
-            '''Now initialize the holes'''
-            # Number of holes inserted. (Initial_holes >= 1)
-            n = 1
-            # Initial hole created close to the center
-            board[(board_size//2)][(board_size//2)] = 0
-
-            # Crude, but doing the job
-            while n < initial_holes:
-                row = rd.randint(0, board_size-1)
-                col = rd.randint(0, board_size-1)
-
-                if (board[row][col] != 0):
-                    board[row][col] = 0
-                    n+=1
-
-            return board
-
-        elif (board_type is BT.TRIANGLE):
-            '''
-            TRIANGLE
-            Generate a size*size list with holes.
-            Holes are initially filled with pegs.
-            Unused parts of board filled with "UNUSED nodes".
-            '''
-            # Create a empty (zero-filled) size x size matrix, able to contain Holes
-            board = np.zeros((board_size, board_size), int)
-            # Fill the board with Pegs.
-            for row in range(0,board_size):
-                for col1 in range(0, row+1):
-                    # Adding pegged nodes
-                    board[row][col1] = 1
-                for col2 in range(row+1, board_size):
-                    # Adding unused nodes
-                    board[row][col2] = -1
-            
-            '''Now initialize the holes'''
-            # Number of holes inserted. (Initial_holes >= 1)
-            n = 1
-            # Initial hole created close to the center of the triangle
-            board[(board_size//2)][(board_size//2)//2] = 0
-
-            # Crude, but doing the job
-            while n < initial_holes:
-                row = rd.randint(0, board_size-1)
-                col = rd.randint(0, board_size-1)
-
-                if (board[row][col] == 1):
-                    board[row][col] = 0
-                    n+=1
-
-            return board
-        else:
-            raise Exception("This is no board type")
-
+        # Initiate some initial board
+        self.state = np.zeros(board_size**2)
+        self.new_board()
 
     def actions(self, state, board_type, board_size):
         '''
@@ -282,13 +210,16 @@ class SW:
 
         Thought: as all edge-pins are removed, the outer pins do become edge pins...
         ''' 
-
+        # Different rewards
         win_reward = 1000
-        reward = 0
+        move_reward = 0
+
+        # All moves are guaranteed good
+        reward = move_reward
         n_pegs = self.pegs_left(state_2, board_type, board_size)
 
         if n_pegs == 1:
-            print("YOU WON!")
+            #print("YOU WON!")
             reward = win_reward
 
         elif self.final_state(state_2, board_type, board_size):
@@ -302,3 +233,80 @@ class SW:
             Simple setter for updating the state of the board.
             '''
             self.state = new_state
+
+    def new_board(self):
+        '''
+        Create a new board for a new game.
+        '''
+        board_type = self.board_type 
+        board_size = self.board_size 
+        initial_holes = self.initial_holes
+
+        if (board_type is BT.DIAMOND):
+            '''
+            Generate a size*size list with nodes.
+            Nodes are initially filled with pegs
+            '''
+            # Create a empty (zero-filled) size x size matrix.
+            board = np.zeros((board_size, board_size), int)
+            # Fill the board with default size, being filled with pegs.
+            for row in range(0,board_size):
+                for col in range(0, board_size):
+                    board[row][col] = 1
+
+            '''Now initialize the holes'''
+            # Number of holes inserted. (Initial_holes >= 1)
+            n = 1
+            # Initial hole created close to the center
+            board[(board_size//2)][(board_size//2)] = 0
+
+            # Crude, but doing the job
+            while n < initial_holes:
+                row = rd.randint(0, board_size-1)
+                col = rd.randint(0, board_size-1)
+
+                if (board[row][col] != 0):
+                    board[row][col] = 0
+                    n+=1
+
+            self.state = board
+
+        elif (board_type is BT.TRIANGLE):
+            '''
+            TRIANGLE
+            Generate a size*size list with holes.
+            Holes are initially filled with pegs.
+            Unused parts of board filled with "UNUSED nodes".
+            '''
+            # Create a empty (zero-filled) size x size matrix, able to contain Holes
+            board = np.zeros((board_size, board_size), int)
+            # Fill the board with Pegs.
+            for row in range(0,board_size):
+                for col1 in range(0, row+1):
+                    # Adding pegged nodes
+                    board[row][col1] = 1
+                for col2 in range(row+1, board_size):
+                    # Adding unused nodes
+                    board[row][col2] = -1
+            
+            '''Now initialize the holes'''
+            # Number of holes inserted. (Initial_holes >= 1)
+            n = 1
+            # Initial hole created close to the center of the triangle
+            board[(board_size//2)][(board_size//2)//2] = 0
+
+            # Crude, but doing the job
+            while n < initial_holes:
+                row = rd.randint(0, board_size-1)
+                col = rd.randint(0, board_size-1)
+
+                if (board[row][col] == 1):
+                    board[row][col] = 0
+                    n+=1
+
+            self.state = board
+        else:
+            raise Exception("This is no board type")
+
+
+

@@ -16,9 +16,9 @@ def animation_test_actions():
     Try to animate the shit 
     '''
     # First, make and print a SW
-    size = 5
-    k = 1
-    sim = SW(BT.DIAMOND, size, k)
+    size = 7
+    k = 3
+    sim = SW(BT.TRIANGLE, size, k)
     print_state(sim.state, sim.board_type, sim.board_size)
 
     # Create display!
