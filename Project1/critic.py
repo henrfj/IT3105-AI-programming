@@ -9,7 +9,7 @@ class Critic:
         # Using V(s): Key is state, returns value of state. Actor passes state to critic(*), 
         # who returns calculated TD error for given state.
         self.V = {}
-        self.eligibiliy = {}
+        self.eligibility = {}
 
 
         # RL parameters
@@ -18,7 +18,12 @@ class Critic:
         self.lambda_a = lambda_c
 
     def initialize_V(self):
-        pass
+        '''
+        Want to initialize with some small random value.
+        Just as for the actor, as we don't know any states yet,
+        these will be added in the evaluation function or smt.
+        '''
+        self.V = {}
 
     def evaluate(self, state):
         return -1
@@ -26,6 +31,20 @@ class Critic:
     def update_V(self, state, delta):
         pass
 
-    def update_e(self, state):
-        pass 
+    def update_e(self, state, mode):
+        '''
+        Two modes:
+        - 1: for setting it to 1, as it was just visited.
+        - 2: for decaying.
+        If a s hasn't been seen before, set its value to 0.
+        '''
+        if mode==1:
+            # When the state was just visited.
+            self.eligibility[state] = 1
+        if mode==2:
+            # When e is decaying
+            if state in self.eligibility:
+                self.eligibility[state] *= (self.discount * self.lambda_a)
+            else: # First time discovered
+                self.eligibility[state] = 0 
 

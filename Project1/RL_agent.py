@@ -1,10 +1,13 @@
 '''
 RL_engine
 '''
-
+# My own modules
 from actor import Actor
 from critic import Critic
 from SW_peg_solitaire import SW, BT
+
+# Libraries
+import numpy as np
 
 class Agent:
     '''
@@ -38,28 +41,35 @@ class Agent:
         self.sim = SW(board_type, board_size, initial_holes)
         
         # Run the learning simulation
-        self.learning()
+        learning_epsilon = 0.2
+        self.learning(learning_epsilon)
         # TODO: want to plot - pegs left Vs epoch number; visualize convergence.
 
         # Now, we hopefully converged to a useful policy.
         # Setting epsilon = 0 (full greed)
         # self.run()
 
-    def learning(self):
+    def learning(self, epsilon):
         # Initial V with some small value
         self.critic.initialize_V()
 
         # Initial PI, no value associaiton: PI(s,a) = 0
         self.actor.initialize_PI()
+        
+        # Checks if the first state is "impossible"
+        if (self.sim.final_state(self.sim.state)):
+            print(self.sim.state)
+            print("No learning possible, impossible state.")
+            return 0
 
         # Run an entire epoch of episodes. i later used for plotting.
         for i in range(self.epochs):
-            # Stores states in a list for animation purposes.
+            # Stores states in a list.
             episode = []
 
             # Reset eligibilites
             self.actor.eligibility = {}
-            self.critic.eligibiliy = {}
+            self.critic.eligibility = {}
 
             # Reset board for this episode.
             self.sim.reset_board()
@@ -71,20 +81,21 @@ class Agent:
             # Initial action. Action = (state, next_state)
             # TODO: what if there are no possible moves?
             possible_moves = self.sim.actions()
-            next_state = self.actor.action_selection(state, possible_moves, 0.2)
+            next_state = self.actor.action_selection(state, possible_moves, epsilon)
 
             # Algorithm-translation:
-            # 1. next_state "=" a/s'
+            # 1. sim.board_state / next_state "=" a/s'
             # 2. state = s
-            # 3. next_move = a'
+            # 3. next_move = a'/s''
 
             # Iterate over an episode.
+            # TODO: should this be state, or next_state?
             while (not self.sim.final_state(state)):
                 # 1
                 # Doing the action, getting a reward. Updating the board.
                 reward = self.sim.reward(state, next_state)
                 self.sim.set_board_state(next_state)
-                # state is then the "previous" state, still.
+                # state is then the "previous" state s, still.
                 episode.append(next_state)
 
                 # 2
@@ -94,8 +105,8 @@ class Agent:
                 
                 # 3
                 # Eligibility updated based on "old" state s, and "old action" a
-                # e(s,a) <- 1
-                self.actor.update_e(state, next_state) # Actor keeps SAP based eligibilites
+                # e(s,a) <- 1. Mode 1 is setting this.
+                self.actor.update_e(state, next_state, 1) # Actor keeps SAP based eligibilites
 
                 # 4
                 # Critic critisises
@@ -103,7 +114,8 @@ class Agent:
 
                 # 5
                 # Critic eligibility. State based eligibility. e(s) <- 1
-                self.critic.update_e(state)
+                # Mode 1 is setting this.
+                self.critic.update_e(state, 1)
                 
                 # 6
                 # Do learning, based on eligibilities.
@@ -118,17 +130,17 @@ class Agent:
                     # Critic updates value function, based on learning rate and eligibility.
                     self.critic.update_V(s, delta)
                     # Discount the e by gamma, and decay rate.
-                    self.critic.update_e(s) # Critic uses state-eligibilities alone.
+                    self.critic.update_e(s, 2) # Critic uses state-eligibilities alone.
 
                     # (c), (d)
                     # Actor updates policy, based on delta. (TD error)
                     self.actor.update_PI(s, a, delta)
                     # Discount the e by gamma, and decay rate. 
-                    self.actor.update_e(s, a)
+                    self.actor.update_e(s, a, 2)
 
                 # Update before proceeding
-                state = next_state
-                next_state = next_move
+                state = np.copy(next_state)
+                next_state = np.copy(next_move)
                 
 
 

@@ -33,7 +33,7 @@ class SW:
 
     def actions(self):
         '''
-        Returns python dictionary of all possible actions, given state.
+        Returns dictionary of all possible actions, given state.
         Basically translates the output from child_states, into dictionary.
         '''
         board_type = self.board_type 
