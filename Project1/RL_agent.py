@@ -39,22 +39,15 @@ class Agent:
 
         # The board type used for simulations field
         self.sim = SW(board_type, board_size, initial_holes)
-        
-        # Run the learning simulation
-        learning_epsilon = 0.2
-        self.learning(learning_epsilon)
-        # TODO: want to plot - pegs left Vs epoch number; visualize convergence.
+        print("Board to learn:\n", self.sim.state)
 
-        # Now, we hopefully converged to a useful policy.
-        # Setting epsilon = 0 (full greed)
-        # self.run()
 
-    def learning(self, epsilon):
+    def learning(self, epsilon_mode):
         # Initial V with some small value
-        self.critic.initialize_V()
+        self.critic.V = {}
 
         # Initial PI, no value associaiton: PI(s,a) = 0
-        self.actor.initialize_PI()
+        self.actor.PI = {}
         
         # Checks if the first state is "impossible"
         if (self.sim.final_state(self.sim.state)):
@@ -63,8 +56,13 @@ class Agent:
             return 0
 
         # Run an entire epoch of episodes. i later used for plotting.
+        pegs_left = [] # For plotting progression
         for i in range(self.epochs):
-            # Stores states in a list.
+            # Run one episode
+            print("Learning progress: "+str(100*i/self.epochs)+"%")
+  
+            # Stores visited states in a list.
+            # Used for eligibility tracing.
             episode = []
 
             # Reset eligibilites
@@ -79,33 +77,25 @@ class Agent:
             episode.append(state)
 
             # Initial action. Action = (state, next_state)
-            # TODO: what if there are no possible moves?
-            possible_moves = self.sim.actions()
-            next_state = self.actor.action_selection(state, possible_moves, epsilon)
-
-            # Algorithm-translation:
-            # 1. sim.board_state / next_state "=" a/s'
-            # 2. state = s
-            # 3. next_move = a'/s''
+            possible_moves = self.sim.child_states(state)
+            # Determine first action.
+            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(i, self.epochs, epsilon_mode))
 
             # Iterate over an episode.
-            # TODO: should this be state, or next_state?
             while (not self.sim.final_state(state)):
                 # 1
                 # Doing the action, getting a reward. Updating the board.
                 reward = self.sim.reward(state, next_state)
                 self.sim.set_board_state(next_state)
-                # state is then the "previous" state s, still.
-                episode.append(next_state)
+                
 
                 # 2
                 # Actor find next action based on the updated board-state.
-                possible_moves = self.sim.actions()
-                next_move = self.actor.action_selection(state, possible_moves, 0.2)
+                possible_moves = self.sim.child_states(next_state)
+                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(i, self.epochs, epsilon_mode))
                 
                 # 3
                 # Eligibility updated based on "old" state s, and "old action" a
-                # e(s,a) <- 1. Mode 1 is setting this.
                 self.actor.update_e(state, next_state, 1) # Actor keeps SAP based eligibilites
 
                 # 4
@@ -114,15 +104,13 @@ class Agent:
 
                 # 5
                 # Critic eligibility. State based eligibility. e(s) <- 1
-                # Mode 1 is setting this.
                 self.critic.update_e(state, 1)
                 
                 # 6
                 # Do learning, based on eligibilities.
-                # The last state in episodes, is an action itself.
+                episode.append(next_state) # Add a to the list.
                 for j in range(0, len(episode)-1):
                     # Bookkeeping
-                    # TODO: in the final move of an episode, we do not update e for actor.
                     s = episode[j]
                     a = episode[j+1]
 
@@ -138,14 +126,32 @@ class Agent:
                     # Discount the e by gamma, and decay rate. 
                     self.actor.update_e(s, a, 2)
 
+                # 7
                 # Update before proceeding
                 state = np.copy(next_state)
-                next_state = np.copy(next_move)
-                
+                try: # if next-state is end-state, then next move is -1
+                    next_state = np.copy(next_move)
+                except:
+                    next_state = next_move
 
+                
+            # How well did this run fare?
+            pegs_left.append(self.sim.pegs_left(state))
+
+        # Returned to show progression of the learning
+        return pegs_left
+
+    def run(self):
+        '''
+
+        '''
+        pegs_left = []
+
+        return pegs_left
 
     # Used for an epsilon-greedy algorithm.
-    def epsilon(self, length_episode=0, mode=0):
+    # TODO: plot this size
+    def epsilon(self, episode_nr, epochs, mode):
         '''
         Mode 0 (default): For full greed.
         
@@ -155,14 +161,12 @@ class Agent:
         '''
         # Mode 1
         if mode == 1:
-            return 0.5
+            return 0.3
         
         # Mode 2
         if mode == 2:
-            if((length_episode/10000) < 1):
-                return (0.5 - length_episode/10000)
-            else:
-                return 0
+            return (0.5 - 0.5*episode_nr/epochs)
+            
         # Mode 0
         return 0
 

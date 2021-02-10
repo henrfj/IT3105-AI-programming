@@ -31,21 +31,6 @@ class SW:
         # To have same board over several episodes
         self.base_board = np.copy(self.state)
 
-    def actions(self):
-        '''
-        Returns dictionary of all possible actions, given state.
-        Basically translates the output from child_states, into dictionary.
-        '''
-        board_type = self.board_type 
-        board_size = self.board_size 
-        state = self.state
-
-        actions = {}
-        children = self.child_states(state, board_type, board_size)
-        for i in range(len(children)):
-            actions[i] = children[i]
-        return actions
-
     def make_move(self, state, pos1, pos2):
         ''' 
         Makes a single move, and returns the new state.
@@ -80,10 +65,12 @@ class SW:
 
         return new_state
 
-    def child_states(self, state, board_type, board_size):
+    def child_states(self, state):
         '''
         Finds all possible child-states given a parent state
         '''
+        board_type = self.board_type
+        board_size = self.board_size
         # Maybe smart to dictionarize this array
         child_states = []
         for row in range(board_size):
@@ -193,15 +180,16 @@ class SW:
         board_type = self.board_type 
         board_size = self.board_size 
 
-        moves = self.child_states(state, board_type, board_size)
+        moves = self.child_states(state)
         # No more moves left
         if len(moves) == 0:
             return True
         return False
 
-    def pegs_left(self, state, board_type, board_size):
+    def pegs_left(self, state):
         '''Calculate number of pins left
         '''
+        board_size = self.board_size
         # Number of pins
         n = 0
         for row in range(board_size):
@@ -219,30 +207,28 @@ class SW:
 
         Thought: as all edge-pins are removed, the outer pins do become edge pins...
         ''' 
-        board_type = self.board_type 
         board_size = self.board_size
 
         # Different rewards
         win_reward = 1000
-        move_reward = 1
+        move_reward = 0
 
         # All moves are guaranteed pegs down.
         reward = move_reward
 
         # To determine if we have won.
-        n_pegs = self.pegs_left(state_2, board_type, board_size)
+        n_pegs = self.pegs_left(state_2)
         # For final states
         if n_pegs == 1:
             print("YOU WON!")
             reward = win_reward
 
-        elif self.final_state(state_2):
-            print("You lost... ")
-            reward = -board_size * n_pegs 
-        print("REWARD:", reward)
-        
+        elif self.final_state(state_2):  
+            # Originally designed for diamond boards, but works for triangles as well.
+            reward = -n_pegs
         
         return reward
+        
 
     def set_board_state(self, new_state): 
             '''

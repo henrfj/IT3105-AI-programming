@@ -1,13 +1,6 @@
 # Todo list
-
-### SW class:
-- Find out what kind of *action* I want to pass: Maybe a tuple or just the integer arrays of child states?
-- 
-
-
-
-## RL engine:
-
+## SW
+- Reward function needs tweaking. Negative rewards?
 
 ## Read further:
 1. Does the actor chose first, and is then ecaluated? Or will the actor ask the critic before acting.(*)
@@ -21,6 +14,7 @@
 => normalize desierability across all legal actions from s, yielding a probability distribution. 
 - The policty itself is Contained within actor and Stored as a dictionary - (state1): [(state2_1, value), (state2_2, value), ...]
 
+- TODO: V(s) values and PI(s,a) are initialized all over the place, which is not great.
 
 
 ### CRITIC

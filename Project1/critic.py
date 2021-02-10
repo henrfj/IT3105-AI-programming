@@ -1,7 +1,7 @@
 '''
 Docstring.
 '''
-
+from random import uniform
 
 class Critic:
     def __init__(self, discount, alpha_c, lambda_c):
@@ -14,22 +14,26 @@ class Critic:
 
         # RL parameters
         self.discount = discount
-        self.alpha_a = alpha_c
-        self.lambda_a = lambda_c
-
-    def initialize_V(self):
-        '''
-        Want to initialize with some small random value.
-        Just as for the actor, as we don't know any states yet,
-        these will be added in the evaluation function or smt.
-        '''
-        self.V = {}
+        self.alpha_c = alpha_c
+        self.lambda_c = lambda_c
 
     def evaluate(self, state):
-        return -1
+        key = str(state)
 
+        try: # Assuming this key exists
+            return self.V[key]
+        except: # Initiate it as a small random number
+            small_random_value = uniform(0,1)
+            self.V[key] = small_random_value
+        return self.V[key]
+        
     def update_V(self, state, delta):
-        pass
+        '''
+        Updates Value function V, based on TD-error delta.
+        '''
+        key = str(state)
+        current_value = self.V[key]
+        self.V[key] = current_value + self.alpha_c * delta * self.eligibility[key]
 
     def update_e(self, state, mode):
         '''
@@ -38,13 +42,12 @@ class Critic:
         - 2: for decaying.
         If a s hasn't been seen before, set its value to 0.
         '''
+        key = str(state)
         if mode==1:
             # When the state was just visited.
-            self.eligibility[state] = 1
+            self.eligibility[key] = 1
         if mode==2:
             # When e is decaying
-            if state in self.eligibility:
-                self.eligibility[state] *= (self.discount * self.lambda_a)
-            else: # First time discovered
-                self.eligibility[state] = 0 
+            self.eligibility[key] *= (self.discount * self.lambda_c)
+             
 
