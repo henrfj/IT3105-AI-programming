@@ -69,7 +69,6 @@ def animation_test_actions():
     ani = animation.FuncAnimation(fig, update, frames=(moves_used+1), interval=1000, repeat=False)
     plt.show()
 
-    sim.reward(sim.state, sim.state)
 
 
 # def animation_test():

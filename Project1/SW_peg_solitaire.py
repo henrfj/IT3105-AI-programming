@@ -199,37 +199,59 @@ class SW:
 
         return n
 
-    def reward(self, state_1, state_2):
+    def reward(self, state_1, state_2, mode=0):
         '''
         Returns reward for a transition
         Idea: favourise removing edge-pins, as you need them down first.
         Every move is guaranteed to bring down a pin, so no need to reward that.
-
-        Thought: as all edge-pins are removed, the outer pins do become edge pins...
         ''' 
-        board_size = self.board_size
 
-        # Different rewards
-        win_reward = 1000
-        move_reward = 0
-
-        # All moves are guaranteed pegs down.
-        reward = move_reward
-
-        # To determine if we have won.
-        n_pegs = self.pegs_left(state_2)
-        # For final states
-        if n_pegs == 1:
-            print("YOU WON!")
-            reward = win_reward
-
-        elif self.final_state(state_2):  
-            # Originally designed for diamond boards, but works for triangles as well.
-            reward = -n_pegs
+        reward = None
+        if mode == 0: # Setup 4: Old giant.
+            reward = 0.1
+            n_pegs = self.pegs_left(state_2)
+            if n_pegs == 1:
+                # YOU WON!
+                reward = 100000
+            elif self.final_state(state_2):  
+                # Lost
+                reward = -10
         
+        elif mode == 1: # Setup 5: no rewards
+            reward = 0
+            n_pegs = self.pegs_left(state_2)
+            if n_pegs == 1:
+                # YOU WON!
+                reward = 100000
+
+            elif self.final_state(state_2): 
+                # Lost
+                reward = -10
+
+        elif mode == 2: # Setup 6: small penalty - Best performer!
+            reward = -0.1
+            n_pegs = self.pegs_left(state_2)
+            if n_pegs == 1:
+                # YOU WON!
+                reward = 100000
+
+            elif self.final_state(state_2): 
+                # Lost
+                reward = -10
+
+        elif mode == 3: # Setup 7: Radical - something new
+            reward = -1
+            n_pegs = self.pegs_left(state_2)
+            if n_pegs == 1:
+                # YOU WON!
+                reward = 100000000000
+
+            elif self.final_state(state_2): 
+                # Lost
+                reward = -10
+
         return reward
         
-
     def set_board_state(self, new_state): 
             '''
             Simple setter for updating the state of the board.
@@ -260,7 +282,7 @@ class SW:
             # Number of holes inserted. (Initial_holes >= 1)
             n = 1
             # Initial hole created close to the center
-            board[(board_size//2)][(board_size//2)] = 0
+            board[((board_size)//2)][((board_size-1)//2)] = 0
 
             # Crude, but doing the job
             while n < initial_holes:

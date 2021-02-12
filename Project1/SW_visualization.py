@@ -155,15 +155,11 @@ class Display:
     def node_pos(self, state, board_type, board_size):
         nodepos={}
         if board_type == BT.DIAMOND:
-            # Iterator, node number
-            i = 0
             for i in range(board_size*board_size):
                 row = i // board_size
                 col = i - row*board_size
+                nodepos[i] = (col, row)
                 
-                nodepos[i] = (row, col)
-                    
-                i+=1
 
         elif board_type == BT.TRIANGLE:
             # Keeping track of layers of triangle
@@ -181,7 +177,7 @@ class Display:
                     n_in_layer += 1
                     n_l_counter = 1
                 
-                nodepos[i] = (n_in_layer-1, n_l_counter-1)
+                nodepos[i] = (n_l_counter-1, n_in_layer-1)
 
                 n_l_counter += 1
 

@@ -22,27 +22,28 @@ class Agent:
 
     The TD error / delta, signify the outcome of the actors move. Big delta = "better than expected", small delta.
     '''
-    def __init__(self, value_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes):
+    def __init__(self, critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode):
         '''
         Parameters:
             -> value_mode: mode for value function. 0: dictionary, 1: NN
             ->
         '''
         # RL parameters
-        self.value_mode = value_mode
+        self.critic_mode = critic_mode
         self.epochs = epochs
         self.discount = discount
+        self.reward_mode = reward_mode
 
         # The two players
         self.actor = Actor(discount, alpha_a, lambda_a)
         self.critic = Critic(discount, alpha_c, lambda_c)
 
-        # The board type used for simulations field
+        # The board used for simulations field
         self.sim = SW(board_type, board_size, initial_holes)
-        print("Board to learn:\n", self.sim.state)
+        #print("Board to learn:\n", self.sim.state)
 
-
-    def learning(self, epsilon_mode):
+    # Learning 
+    def learning(self, e_0, epsilon_mode):
         # Initial V with some small value
         self.critic.V = {}
 
@@ -58,8 +59,9 @@ class Agent:
         # Run an entire epoch of episodes. i later used for plotting.
         pegs_left = [] # For plotting progression
         for i in range(self.epochs):
-            # Run one episode
-            print("Learning progress: "+str(100*i/self.epochs)+"%")
+            # Print progress
+            #if i%(int(0.5*self.epochs/10)) == 0:
+            #    print("Learning progress: "+str(100*i/self.epochs)+"%")
   
             # Stores visited states in a list.
             # Used for eligibility tracing.
@@ -79,20 +81,19 @@ class Agent:
             # Initial action. Action = (state, next_state)
             possible_moves = self.sim.child_states(state)
             # Determine first action.
-            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(i, self.epochs, epsilon_mode))
+            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
 
             # Iterate over an episode.
             while (not self.sim.final_state(state)):
                 # 1
-                # Doing the action, getting a reward. Updating the board.
-                reward = self.sim.reward(state, next_state)
+                # Doing the action, getting a reward, updating the board.
+                reward = self.sim.reward(state, next_state, self.reward_mode)
                 self.sim.set_board_state(next_state)
                 
-
                 # 2
                 # Actor find next action based on the updated board-state.
                 possible_moves = self.sim.child_states(next_state)
-                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(i, self.epochs, epsilon_mode))
+                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
                 
                 # 3
                 # Eligibility updated based on "old" state s, and "old action" a
@@ -140,24 +141,39 @@ class Agent:
 
         # Returned to show progression of the learning
         return pegs_left
-
+    # Demonstrating
     def run(self):
         '''
-
+        Runs on the completed PI. Animates the solution.
         '''
-        pegs_left = []
+        # Saves the episode for animation.
+        episode = []
+        self.sim.reset_board()
+        # Initial state
+        state = self.sim.state
+        episode.append(state)
 
-        return pegs_left
-
-    # Used for an epsilon-greedy algorithm.
-    # TODO: plot this size
-    def epsilon(self, episode_nr, epochs, mode):
+        while (not self.sim.final_state(state)):
+            # Look for actions
+            possible_moves = self.sim.child_states(state)
+            # Determine first action.
+            state = self.actor.action_selection(state, possible_moves, self.epsilon(0, 0, 0))
+            episode.append(state)
+        
+        
+        return episode
+    # Calculating epsilon for the epsilon-greedy algorithm.
+    def epsilon(self, mode, e_0, episode_nr=0, epochs=0):
         '''
         Mode 0 (default): For full greed.
         
         Mode 1: fixed constant for big exploration, and thus learning.
 
-        Mode 2: Gradual decent
+        Mode 2: Linear decent
+
+        Mode 3: logarithmic decay / inverse sigmoid
+
+        Mode 4: ReLu-like behaviour
         '''
         # Mode 1
         if mode == 1:
@@ -165,8 +181,19 @@ class Agent:
         
         # Mode 2
         if mode == 2:
-            return (0.5 - 0.5*episode_nr/epochs)
-            
+            return (e_0 - e_0*episode_nr/epochs)
+        
+        if mode == 3:
+            if (episode_nr/epochs) <= 0.5:
+                return e_0
+            else:
+                return (e_0 - e_0*(episode_nr - epochs*0.5)/(epochs*0.5))
         # Mode 0
+
+        if mode == 4:
+            if (episode_nr/epochs) < 0.9:
+                return (e_0 - e_0*episode_nr/(epochs*0.9))
+            else:
+                return 0
         return 0
 
