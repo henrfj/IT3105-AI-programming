@@ -61,29 +61,34 @@ def main():
         initial_holes,
         reward_mode]   
     
+
     # Some solutions to showcase:
     ### Solves the 4_1 Diamond; table
     #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
     ### Solved the 5_1 Triangle; table ~ 82%
-    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 2]
+    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 2] ~ 82%
+    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0] ~ 79% (BEST)
+    ### Combined best performers - needs testing
+    #parameters = [2, 0.5, 1, 0.8, 0.6, 0.6, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
 
+
+    # Test
+    #parameters = [2, 0.5, 1, 0.8, 0.5, 0.5, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
+    ### TYPES of simulation
     #simulation_w_animation(parameters)
+    #simulation_wo_animation(parameters, number)
+
     
     # Nightly simulations
-    
-    l_rates = [0.1, 0.2, 0.4, 0.6]
-    scores = []
-    '''
-    for i in range(4):
-        parameters = [2, 0.5, 1, 0.8, l_rates[i], l_rates[i], 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 2]
-        scores.append(simulation_wo_animation(parameters , 100))
-    '''
-    parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 2]
-    scores.append(simulation_wo_animation(parameters , 50))
+    scores = [] 
+    for i in range(1):
+        parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
+        scores.append(simulation_wo_animation(parameters , 500))
     print("-----------------------------------------")
     for i in range(len(scores)):
         print("Complete results")
         print("Mode:",i,":",scores[i],"%")
+    
 
 # For presentation of one set of parameters.
 def simulation_w_animation(parameters):

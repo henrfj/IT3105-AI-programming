@@ -207,9 +207,10 @@ class SW:
         ''' 
 
         reward = None
-        if mode == 0: # Setup 4: Old giant.
+        n_pegs = self.pegs_left(state_2)
+        if mode == 0: # Setup 4: Old giant - best performer.
+            # Each step
             reward = 0.1
-            n_pegs = self.pegs_left(state_2)
             if n_pegs == 1:
                 # YOU WON!
                 reward = 100000
@@ -217,20 +218,18 @@ class SW:
                 # Lost
                 reward = -10
         
-        elif mode == 1: # Setup 5: no rewards
-            reward = 0
-            n_pegs = self.pegs_left(state_2)
+        elif mode == 1: # Scaled reward. Often converge on 2.
+            # Each step
+            reward = 0.1
             if n_pegs == 1:
                 # YOU WON!
-                reward = 100000
-
+                reward = 10000
             elif self.final_state(state_2): 
                 # Lost
-                reward = -10
+                reward = -n_pegs + 2
 
-        elif mode == 2: # Setup 6: small penalty - Best performer!
+        elif mode == 2: # Setup 6: small penalty was the best performer.
             reward = -0.1
-            n_pegs = self.pegs_left(state_2)
             if n_pegs == 1:
                 # YOU WON!
                 reward = 100000
@@ -241,11 +240,9 @@ class SW:
 
         elif mode == 3: # Setup 7: Radical - something new
             reward = -1
-            n_pegs = self.pegs_left(state_2)
             if n_pegs == 1:
                 # YOU WON!
                 reward = 100000000000
-
             elif self.final_state(state_2): 
                 # Lost
                 reward = -10

@@ -17,6 +17,13 @@ class Critic:
         self.alpha_c = alpha_c
         self.lambda_c = lambda_c
 
+
+    def initialize_V(self):
+        '''
+        Resets/initializes the value table function, for each new simulation.
+        '''
+        self.V = {}
+
     def evaluate(self, state):
         key = str(state)
 
