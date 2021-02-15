@@ -4,6 +4,8 @@
 import tensorflow as tf
 from random import uniform
 import tensorflow.keras as ker
+from tensorflow.keras import layers
+import numpy as np
 
 # Modules
 import splitGD as SGD
@@ -28,30 +30,38 @@ class NN_Critic:
         self.n_layers = n_layers # Number of hidden layers used.
         self.input_size = input_size
 
-        # Create the initial splittable network.
-        self.split_model = self.initialize_V()
+        # V is initialized each epoch
 
     def initialize_V(self):
-        # Sequential model
+        
+        # Sequential model.
         model = ker.Sequential()
-        # Input layer
+       
+        # Input layer.
         model.add(ker.Input(shape=(self.input_size, )))
+        
         # A number of hidden layers
         for i in range(self.n_layers):
-            model.add(ker.layers.Dense(i))
-        # Compiling the model
+            model.add(ker.layers.Dense(self.input_size, activation='tanh'))
+        
+        # Output layer.
+        # TODO: Linear activation function?
+        model.add(ker.layers.Dense(1, activation='tanh'))
+
+        # Compiling the model.
         model.compile(optimizer=ker.optimizers.SGD(learning_rate=(self.alpha_c)), loss=ker.losses.MeanSquaredError(), metrics=['accuracy'])
         model.summary()
-        # Not the model is ready for fitting, but we need to split it.
-        sgd_model = SGD.SplitGD(model, self)
-        return sgd_model
-
-    def initialize_e(self, state, mode):
+        ker.utils.plot_model(model, "my_sequential_model.png", show_shapes=True)
+        # Now the model is ready for fitting, but we need to split it.
+        self.split_model = SGD.SplitGD(model, self)
+        
+    def initialize_e(self):
         ''' 
         Reset at start of each simulation.
         '''
-        self.eligibility = {}
-    
+        # Will be initialized once we have the shape of gradients.
+        self.eligibility = []
+
     def update_V(self, input_state, target):
         '''
         INPUT: the current state, transformed to input-format
@@ -61,7 +71,8 @@ class NN_Critic:
         based on the newly found reward -> delta, we update weights
         who were active this episode, based on eligibility.
         '''
-        self.split_model.fit(input_state, target)
+        # Verbosity = level of printing
+        self.split_model.fit(input_state, target, verbosity=0)
 
         '''
         We are re-training every feature-target for each step we take. But for each step we get a new reward and a new delta.
@@ -73,7 +84,6 @@ class NN_Critic:
 
     def update_delta(self, V_star, V_theta):
         ''' Calculates new delta, using NN prediction'''
-        
         self.delta = V_star - V_theta
         return self.delta
     
@@ -86,23 +96,71 @@ class NN_Critic:
         Eligibilities is the glue between NN and state-table, as you tell the NN what weights were
         useful in predicting the last  couple of states, so that they can get some reward/punishment for the current prediction.
         
+        Gradients is a list of tensors, one for each layer. Contains the gradients of each weight related to each layer.
         '''
-        # Add gradients to eligibilities of weights. Or, initialize the eligibilities.
-        # TODO: Do we need to start at 1?
-        for i in range(len(gradients)):
-            try:
-                self.eligibility[i] = self.eligibility[i] + gradients[i]
-            except:
-                self.eligibility[i] = gradients[i]
+        # 1
+        # Make eligibilities into same shape as gradients, filled with 0.
+        if len(self.eligibility) == 0:
+            self.eligibility = []
+            for i in range(len(gradients)):
+                self.eligibility.append(tf.fill(tf.shape(gradients[i]), 0.0))
 
-        ## Update gradients
-        for i in range(len(gradients)):
-            gradients[i] += self.alpha_c * self.delta * self.eligibility[i]
-
-        # Decay
-        # TODO: Decay now, or at some other time?
-        for i in range(len(self.eligibility)):
-                self.eligibility[i] *= self.discount * self.lambda_c 
+        # 2
+        ## Update gradients.
         
-        # New and improved.
+        # 2.1
+        ## First add gradients to eligibilities of weights.
+        for i in range(len(gradients)):
+            self.eligibility[i] = tf.math.add(self.eligibility[i], gradients[i])
+        
+        # 2.2
+        ## Update gradients based on eligibility.
+        for i in range(len(gradients)):
+            #self.eligibility[i] * self.alpha_c * self.delta
+            ts = tf.math.multiply(self.eligibility[i], self.alpha_c * self.delta[0][0])
+            # ts = tf.reshape(ts, tf.shape(self.eligibility[i]))
+            # gradients[i] += ts
+            gradients[i] = tf.math.add(gradients[i], ts)
+
+        # 2.3 
+        ## Decay the eligibilities.
+        for i in range(len(self.eligibility)):
+            self.eligibility[i] = tf.math.multiply(self.eligibility[i], self.discount * self.lambda_c)
+
+        # 3
+        # Return updated gradients.
         return gradients
+
+
+'''
+# 1
+# Turn gradients into one long list og dV/dw_i
+grad = [] # All weight-specific gradients dV/dw
+for layer in range(len(gradients)): # Run through all layers
+    try:
+        for node in range(len(gradients[layer])): # Run through all nodes in layer
+            try:
+                for weight in range(len(gradients[layer][node])): # Run throug all the nodes
+                    grad.append(gradients[layer][node][weight].numpy())
+            
+            except: # gradients[layer][node] is a scalar. This is the input layer (16, 1)          
+                grad.append(gradients[layer][node].numpy())
+    
+    except: # gradients[layer] is a scalar. This is the output weight (1, )
+        grad.append(gradients[layer].numpy())
+    
+# 2
+for i in range(len(grad)):
+    try:
+        self.eligibility[i] = self.eligibility[i] + grad[i]
+    except:
+        self.eligibility[i] = grad[i]
+
+## Update gradients.
+for i in range(len(grad)):
+    grad[i] += self.alpha_c * self.delta * self.eligibility[i]
+
+# Decay eligibilities.
+for i in range(len(self.eligibility)):
+        self.eligibility[i] *= self.discount * self.lambda_c
+'''

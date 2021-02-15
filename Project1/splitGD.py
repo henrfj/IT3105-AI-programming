@@ -6,7 +6,7 @@ import math
 import tensorflow as tf
 import numpy as np
 # Modules
-#import nn_critic as nc
+import nn_critic as nc
 
 # ************** Split Gradient Descent (SplitGD) **********************************
 # This "exposes" the gradients during gradient descent by breaking the call to "fit" into two calls: tape.gradient
@@ -32,7 +32,7 @@ class SplitGD():
 
     def modify_gradients(self,gradients):   
         # Do something here
-        updated = self.critic.update_gradients()
+        updated = self.critic.update_gradients(gradients)
         return updated
 
     # This returns a tensor of losses, OR the value of the averaged tensor.  Note: use .numpy() to get the

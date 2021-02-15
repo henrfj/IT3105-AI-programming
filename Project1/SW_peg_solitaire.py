@@ -238,8 +238,8 @@ class SW:
                 # Lost
                 reward = -10
 
-        elif mode == 3: # Setup 7: Radical - something new
-            reward = -1
+        elif mode == 3: # Setup 7: The recomended
+            reward = 0
             if n_pegs == 1:
                 # YOU WON!
                 reward = 100000000000

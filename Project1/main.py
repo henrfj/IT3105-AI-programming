@@ -1,7 +1,7 @@
 '''
 Main file:
-- running the simulations
-- setting parameters
+- for running the simulations.
+- and setting parameters.
 
 '''
 #############################################################
@@ -12,6 +12,11 @@ from SW_peg_solitaire import SW, BT # The simworld
 from RL_agent import Agent # The RL agent
 import SW_tests as SWTest # Testing the visualization, and the animation
 from SW_visualization import Display # Visualization of the board
+# Other modules, not in use
+import critic
+import actor
+import splitGD
+import nn_critic
 # Libraries
 import numpy as np # Maths
 import matplotlib.pyplot as plt # Graphing
@@ -22,29 +27,30 @@ def main():
     #############################################################
     ####################### PARAMETERS ##########################
     #############################################################
+    epsilon_mode = 2            # Linear decay from e_0 to zero.
+    initial_epsilon = 0.5       # Initial value of epsilon.
+    critic_mode = 2             # 1 for table, 2 for NN.
+    discount = 0.9              # Gamma.
+    alpha_a = 0.40              # Learning rate of actor.
+    alpha_c = 0.1               # Learning rate of critic.
+    epoch = 200                 # Number of episodes in epoch.
+    lambda_a = 0.9              # Decay rate of actors eligibility. 
+    lambda_c = 0.9              # Decay rate of critics eligibility. 
+    board_type = BT.TRIANGLE    # Board type for the simworld.
+    board_size = 5              # Board dimension.
+    initial_holes = 1           # Initial no. holes. 1 is always centered.
+    reward_mode = 0             # Reward regime. 0 is the best performer for now.
+    #############################################################
+    ####################### PARAMETERS ##########################
+    #############################################################
+    # He used lr: 0.0001 for NN and 0.1 for table
+    
     '''Epsilon modes explained'''
     # mode 0 = zero
     # Mode 1 = constant 
     # Mode 2 = Linear decay over number of episodes
     # Mode 3 = Flat -> Linear
     # Mode 4 = Linear -> Flat, zero ending
-    epsilon_mode = 2        # 2
-    initial_epsilon = 0.5   # 0.5
-    critic_mode = 1         # 1
-    discount = 0.80         # 0.80
-    alpha_a = 0.40          # 0.40
-    alpha_c = 0.40          # 0.40
-    epoch = 1000            # Episodes per epoch
-    lambda_a = 0.90         # 0.90
-    lambda_c = 0.90         # 0.90
-    board_type = BT.DIAMOND
-    board_size = 4
-    initial_holes = 1
-    reward_mode = 0
-    #############################################################
-    ####################### PARAMETERS ##########################
-    #############################################################
-    
     # Passing parameters as a list
     parameters = [
         epsilon_mode,
@@ -61,25 +67,28 @@ def main():
         initial_holes,
         reward_mode]   
     
-
     # Some solutions to showcase:
-    ### Solves the 4_1 Diamond; table
+    
+    # Table
+    ### 4_1 Diamond; table
     #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
     ### Solved the 5_1 Triangle; table ~ 82%
-    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 2] ~ 82%
     #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0] ~ 79% (BEST)
-    ### Combined best performers - needs testing
-    #parameters = [2, 0.5, 1, 0.8, 0.6, 0.6, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
+
+    # NN 
+    ### 4_1, diamond
+    #parameters = [2, 0.5, 2, 0.8, 0.4, 0.1, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
+    ### 5_1, triangle
 
 
-    # Test
-    #parameters = [2, 0.5, 1, 0.8, 0.5, 0.5, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
     ### TYPES of simulation
-    #simulation_w_animation(parameters)
+    simulation_w_animation(parameters)
     #simulation_wo_animation(parameters, number)
 
-    
+    '''
     # Nightly simulations
+    ### Combined best performers - needs testing
+    #parameters = [2, 0.5, 1, 0.8, 0.6, 0.6, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
     scores = [] 
     for i in range(1):
         parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0]
@@ -88,7 +97,8 @@ def main():
     for i in range(len(scores)):
         print("Complete results")
         print("Mode:",i,":",scores[i],"%")
-    
+    '''
+
 
 # For presentation of one set of parameters.
 def simulation_w_animation(parameters):
@@ -96,7 +106,7 @@ def simulation_w_animation(parameters):
     # Parameters
     epsilon_mode = parameters[0]
     e_0 = parameters[1]
-    value_mode = parameters[2]
+    critic_mode = parameters[2]
     discount = parameters[3]
     alpha_a = parameters[4]
     alpha_c = parameters[5]
@@ -109,9 +119,13 @@ def simulation_w_animation(parameters):
     reward_mode = parameters[12]
 
     # Create the agent
-    rl_agent = Agent(value_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
+    rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
     # Run the learning simulation
-    pegs_left = rl_agent.learning(e_0, epsilon_mode)
+    if critic_mode == 1: # Table
+        pegs_left = rl_agent.learning(e_0, epsilon_mode)
+    else: # NN
+        pegs_left = rl_agent.nn_learning(e_0, epsilon_mode)
+    # Other plotting variables
     n_episodes = np.linspace(1,epochs,epochs)
     epsilons = np.zeros(epochs)
     for i in range(len(epsilons)):

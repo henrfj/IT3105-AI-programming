@@ -5,7 +5,9 @@ RL_engine
 from actor import Actor
 from critic import Critic
 from SW_peg_solitaire import SW, BT
-from nn_critic import NN_Critic
+
+import nn_critic as nc
+import splitGD as SGD
 # Libraries
 import numpy as np
 
@@ -22,15 +24,15 @@ class Agent:
 
     The TD error / delta, signify the outcome of the actors move. Big delta = "better than expected", small delta.
     '''
-    def __init__(self, critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode):
+    def __init__(self, critic_mode, discount,
+     alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode):
         '''
         Parameters:
             -> value_mode: mode for value function. 0: dictionary, 1: NN
             ->
         '''
         # NN parameters
-        self.n_layers = 1
-        self.input_size = board_size**2 #TODO: function to calculte this
+        self.n_layers = 1 # should suffice.
 
         # RL parameters
         self.critic_mode = critic_mode
@@ -43,7 +45,8 @@ class Agent:
         if critic_mode == 1:
             self.critic = Critic(discount, alpha_c, lambda_c)
         else:
-           self.critic = NN_Critic(discount, alpha_c, lambda_c, self.n_layers, self.input_size)
+            input_size = self.compute_input_size(board_type, board_size)
+            self.critic = nc.NN_Critic(discount, alpha_c, lambda_c, self.n_layers, input_size)
         
         
         # The board used for simulations field
@@ -150,7 +153,6 @@ class Agent:
         # Returned to show progression of the learning
         return pegs_left
     
-    
     ## NN learning
     def nn_learning(self, e_0, epsilon_mode):
         # Initial net V.
@@ -169,8 +171,7 @@ class Agent:
         pegs_left = [] # For plotting progression
         for i in range(self.epochs):
             # Print progress
-            if i%(int(0.5*self.epochs/10)) == 0:
-                print("Learning progress: "+str(100*i/self.epochs)+"%")
+            print("Learning progress: "+str(round(100*i/self.epochs, 2))+"%")
   
             # Stores visited states in a list.
             # Used for eligibility tracing.
@@ -178,7 +179,7 @@ class Agent:
 
             # Reset eligibilites
             self.actor.eligibility = {}
-            self.critic.eligibility = {}
+            self.critic.initialize_e()
 
             # Reset board for this episode.
             self.sim.reset_board()
@@ -193,7 +194,7 @@ class Agent:
             next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
 
             # Iterate over an episode.
-            state_target = []
+            state_target = [] # if we want to  batch up an entire episode. Could speed up.
             while (not self.sim.final_state(state)):
                 # 1
                 # Doing the action, getting a reward, updating the board.
@@ -222,7 +223,7 @@ class Agent:
                 delta = self.critic.update_delta(V_star, V_theta)
 
                 # 5 - Eligibilites are different for critic now. (e(s) <- 1)
-                # They are updated and kept in "update gradient" function.
+                # They are updated and kept in "update_gradient" function.
                 
                 # 6
                 # Do learning, based on eligibilities.
@@ -239,12 +240,19 @@ class Agent:
                     self.actor.update_e(s, a, 2)
 
                 # 6.5
-                # We do the learning for the critic
+                # We do the learning for the critic. 
+                # TODO: We could save up deltas/TD-errors and states for one episode: 50% increased speed!
+                # TODO: This makes no sense, no need to retrain for each one? All weights will be updated anyways,
+                # based on eligibiliy.
+                # If we want to call fit() after an entire episode - reset elig. at beginning of en episode.
+                # TODO: We reset eligibilities every round. Does this solution make any sense? - probably yes.
+                self.critic.update_V(state_input, V_star)
+                '''
                 for j in range(len(state_target)):
                     # Do learning
                     # Takes care of eligibilities and all.
                     self.critic.update_V(state_target[j][0], state_target[j][1])
-
+                '''
                 # 7
                 # Update before proceeding
                 state = np.copy(next_state)
@@ -259,7 +267,6 @@ class Agent:
 
         # Returned to show progression of the learning
         return pegs_left
-
 
     # Demonstrating
     def run(self):
@@ -316,6 +323,17 @@ class Agent:
             else:
                 return 0
         return 0
+    # Compute size of NN input. Used to create new nn.
+    def compute_input_size(self, board_type, board_size):
+        if board_type == BT.DIAMOND:
+            return board_size**2
+        elif board_type == BT.TRIANGLE:
+            size = 0
+            for i in range(1, board_size+1):
+                size += i
+            return size
+        else:
+            raise TypeError("No board size defined.")
     # Make states into input for 
     def state_to_input(self, state, board_size, board_type):
         ''' Turns the size*size matrix into an input'''
@@ -328,7 +346,7 @@ class Agent:
                     inputs[i] = state[row][col]
                     i+=1
 
-        if board_size == BT.TRIANGLE:
+        elif board_type == BT.TRIANGLE:
             # Keeping track of layers of triangle
             n_in_layer = 1 # Number of nodes in this layer/row number
             n_l_counter = 1 #Current position within layer/col number
@@ -345,5 +363,8 @@ class Agent:
                     n_l_counter = 1
                 inputs[i] = state[n_in_layer-1 ][n_l_counter-1]
                 n_l_counter += 1
+        
+        else: 
+            raise Exception("invalid board type")
 
-        return inputs
+        return inputs.reshape((1,len(inputs)))

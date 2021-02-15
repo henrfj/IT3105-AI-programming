@@ -1,8 +1,10 @@
 # Todo list
 
-## SW
+## Help session:
 
-- Reward function needs tweaking. Negative rewards?
+1. Activation function of output layer?
+2. Function converge to higher target?
+3. My understanding of the algorithm => only one fit per move right?
 
 ## Read further
 
