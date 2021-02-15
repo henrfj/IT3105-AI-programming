@@ -73,7 +73,7 @@ def main():
     ### 4_1 Diamond; table
     #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
     ### Solved the 5_1 Triangle; table ~ 82%
-    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0] ~ 79% (BEST)
+    parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0] #~ 79% (BEST)
 
     # NN 
     ### 4_1, diamond
@@ -187,7 +187,7 @@ def simulation_wo_animation(parameters, num_sims):
     # Parameters
     epsilon_mode = parameters[0]
     e_0 = parameters[1]
-    value_mode = parameters[2]
+    critic_mode = parameters[2]
     discount = parameters[3]
     alpha_a = parameters[4]
     alpha_c = parameters[5]
@@ -203,7 +203,13 @@ def simulation_wo_animation(parameters, num_sims):
     for i in range(num_sims):
         print("Progress: " + str(round(100*i/num_sims,2)) + "%")
         # Create the agent
-        rl_agent = Agent(value_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
+        # Create the agent
+        rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
+        # Run the learning simulation
+        if critic_mode == 1: # Table
+            pegs_left = rl_agent.learning(e_0, epsilon_mode)
+        else: # NN
+            pegs_left = rl_agent.nn_learning(e_0, epsilon_mode)
         # Run the learning simulation
         pegs_left = rl_agent.learning(e_0, epsilon_mode)
         # Test the policy

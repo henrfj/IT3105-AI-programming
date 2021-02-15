@@ -74,17 +74,9 @@ class NN_Critic:
         # Verbosity = level of printing
         self.split_model.fit(input_state, target, verbosity=0)
 
-        '''
-        We are re-training every feature-target for each step we take. But for each step we get a new reward and a new delta.
-        So based on the delta of the newest states, we train the funcapp on all previous states as well.
-        (state, V*) are kept while we go through the episode. 
-        For every new move we make, we re-train the (state, V*) based on the new delta - but still the old target.
-        TODO: Is this correct?
-        '''
-
     def update_delta(self, V_star, V_theta):
         ''' Calculates new delta, using NN prediction'''
-        self.delta = V_star - V_theta
+        self.delta = (V_star - V_theta)[0][0]
         return self.delta
     
     def update_gradients(self, gradients):
@@ -117,7 +109,7 @@ class NN_Critic:
         ## Update gradients based on eligibility.
         for i in range(len(gradients)):
             #self.eligibility[i] * self.alpha_c * self.delta
-            ts = tf.math.multiply(self.eligibility[i], self.alpha_c * self.delta[0][0])
+            ts = tf.math.multiply(self.eligibility[i], self.alpha_c * self.delta)
             # ts = tf.reshape(ts, tf.shape(self.eligibility[i]))
             # gradients[i] += ts
             gradients[i] = tf.math.add(gradients[i], ts)
