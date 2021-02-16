@@ -3,6 +3,9 @@ Docstring
 '''
 # used for random-epsilon action selection.
 from random import randint, uniform
+import numpy as np
+import ast
+import re
 
 class Actor:
     '''
@@ -39,10 +42,13 @@ class Actor:
             # which happens at the end of an episode.
             return -1
 
+        # List of all keys related to possible moves.
+        sub = []
         # Add all SAPS to PI
         for i in range(len(possible_moves)):
             action = possible_moves[i]
             SAP = (str(state),str(action))
+            sub.append(SAP)
             try:
                 a = self.PI[SAP]
             except:
@@ -60,6 +66,7 @@ class Actor:
         #self.normalize_policy(state, possible_moves)
 
         # Pick action to maximize output.
+        '''
         best_val = 0
         best_move = possible_moves[0]
         for i in range(len(possible_moves)):
@@ -71,7 +78,15 @@ class Actor:
                 best_val = val
                 best_move = action 
             
-
+        '''
+        # Max key, given subset of keys
+        best_sap = max(sub, key=self.PI.get)
+        # The action itself
+        best_move = best_sap[1]
+        # Best move is a string
+        ls = re.sub('\s+', ',', best_move)
+        best_move = np.array(ast.literal_eval(ls))
+        
         return best_move
 
     def update_PI(self, state, next_state, delta):

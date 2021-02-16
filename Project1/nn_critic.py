@@ -11,7 +11,7 @@ import numpy as np
 import splitGD as SGD
 
 class NN_Critic:
-    def __init__(self, discount, alpha_c, lambda_c, n_layers, input_size):
+    def __init__(self, discount, alpha_c, lambda_c, layer_dimensions, input_size):
         # Using V(s): Key is state, returns value of state. Actor passes state to critic(*), 
         # who returns calculated TD error for given state.
         
@@ -27,7 +27,8 @@ class NN_Critic:
         self.lambda_c = lambda_c
 
         # NN parameters
-        self.n_layers = n_layers # Number of hidden layers used.
+        self.layer_dimensions = layer_dimensions    # List of hidden layer dimensions.
+        self.n_layers = len(self.layer_dimensions)  # Number of hidden layers used.
         self.input_size = input_size
 
         # V is initialized each epoch
@@ -42,15 +43,18 @@ class NN_Critic:
         
         # A number of hidden layers
         for i in range(self.n_layers):
-            model.add(ker.layers.Dense(self.input_size, activation='tanh'))
+            #model.add(ker.layers.Dense(self.input_size, activation='tanh'))
+            model.add(ker.layers.Dense(self.layer_dimensions[i], activation='tanh'))
         
         # Output layer.
-        # TODO: Linear activation function?
+        # TODO: Linear activation function - can have all kinds of values. => Sucks for some reason...
+        # Tanh works fine on Diamond at least. Only means that values are in range (1, -1)
+        # Can also avoid adding activation function all together.
         model.add(ker.layers.Dense(1, activation='tanh'))
 
         # Compiling the model.
         model.compile(optimizer=ker.optimizers.SGD(learning_rate=(self.alpha_c)), loss=ker.losses.MeanSquaredError(), metrics=['accuracy'])
-        model.summary()
+        #model.summary()
         ker.utils.plot_model(model, "my_sequential_model.png", show_shapes=True)
         # Now the model is ready for fitting, but we need to split it.
         self.split_model = SGD.SplitGD(model, self)
@@ -72,7 +76,7 @@ class NN_Critic:
         who were active this episode, based on eligibility.
         '''
         # Verbosity = level of printing
-        self.split_model.fit(input_state, target, verbosity=0)
+        self.split_model.fit(input_state, target, vfrac=0, verbosity=0)
 
     def update_delta(self, V_star, V_theta):
         ''' Calculates new delta, using NN prediction'''

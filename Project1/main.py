@@ -22,6 +22,7 @@ import numpy as np # Maths
 import matplotlib.pyplot as plt # Graphing
 import networkx as nx # Network graph
 from matplotlib import animation # Animating network graphs
+import time
 
 def main():
     #############################################################
@@ -29,22 +30,31 @@ def main():
     #############################################################
     epsilon_mode = 2            # Linear decay from e_0 to zero.
     initial_epsilon = 0.5       # Initial value of epsilon.
-    critic_mode = 2             # 1 for table, 2 for NN.
+    critic_mode = 1             # 1 for table, 2 for NN.
     discount = 0.9              # Gamma.
-    alpha_a = 0.40              # Learning rate of actor.
-    alpha_c = 0.1               # Learning rate of critic.
-    epoch = 200                 # Number of episodes in epoch.
+    alpha_a = 0.4               # Learning rate of actor.
+    alpha_c = 0.4              # Learning rate of critic.
+    epoch = 1000                 # Number of episodes in epoch.
     lambda_a = 0.9              # Decay rate of actors eligibility. 
     lambda_c = 0.9              # Decay rate of critics eligibility. 
     board_type = BT.TRIANGLE    # Board type for the simworld.
     board_size = 5              # Board dimension.
     initial_holes = 1           # Initial no. holes. 1 is always centered.
     reward_mode = 0             # Reward regime. 0 is the best performer for now.
+    layer_dimensions = [8]      # Number of hidden layers in nn, and size of each layer
     #############################################################
     ####################### PARAMETERS ##########################
     #############################################################
-    # He used lr: 0.0001 for NN and 0.1 for table
-    
+    ''' Play around with:
+    #Nodes in dense layer.
+    Activation functions, especially output.
+    Learning rates: He used lr: 0.0001 for NN and 0.1 for table
+    What seperates diamond and triangle? Coding error somewhere?
+    Number of layers.
+
+    Input size - calculate once.
+    The game is over - use one method.
+    '''
     '''Epsilon modes explained'''
     # mode 0 = zero
     # Mode 1 = constant 
@@ -65,25 +75,28 @@ def main():
         board_type,
         board_size,
         initial_holes,
-        reward_mode]   
+        reward_mode,
+        layer_dimensions]   
     
     # Some solutions to showcase:
     
     # Table
-    ### 4_1 Diamond; table
-    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
-    ### Solved the 5_1 Triangle; table ~ 82%
-    parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0] #~ 79% (BEST)
+    ### 4_1 Diamond
+    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0, [0]]
+    ### 5_1 Triangle
+    #parameters = [2, 0.5, 1, 0.8, 0.4, 0.4, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0, [0]] #~ 79% (BEST)
 
     # NN 
-    ### 4_1, diamond
-    #parameters = [2, 0.5, 2, 0.8, 0.4, 0.1, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0]
-    ### 5_1, triangle
+    ### 4_1, Diamond
+    #parameters = [2, 0.5, 2, 0.8, 0.4, 0.1, 200, 0.9, 0.9, BT.DIAMOND, 4, 1, 0, [16]]
+    ### 5_1, Triangle
+    #parameters = [2, 0.5, 2, 0.8, 0.4, 0.01, 600, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0, [8]] 
 
+    parameters = [2, 0.9, 2, 0.8, 0.4, 0.5, 1000, 0.9, 0.9, BT.TRIANGLE, 5, 1, 0, [3,3,3]] 
 
     ### TYPES of simulation
-    simulation_w_animation(parameters)
-    #simulation_wo_animation(parameters, number)
+    #simulation_w_animation(parameters)
+    simulation_wo_animation(parameters, 10)
 
     '''
     # Nightly simulations
@@ -117,14 +130,21 @@ def simulation_w_animation(parameters):
     board_size = parameters[10]
     initial_holes = parameters[11]
     reward_mode = parameters[12]
+    layer_dimensions = parameters[13]
 
     # Create the agent
-    rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
+    rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c,
+     epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode, layer_dimensions)
     # Run the learning simulation
+    
+    
     if critic_mode == 1: # Table
         pegs_left = rl_agent.learning(e_0, epsilon_mode)
     else: # NN
         pegs_left = rl_agent.nn_learning(e_0, epsilon_mode)
+    
+    
+    
     # Other plotting variables
     n_episodes = np.linspace(1,epochs,epochs)
     epsilons = np.zeros(epochs)
@@ -198,20 +218,20 @@ def simulation_wo_animation(parameters, num_sims):
     board_size = parameters[10]
     initial_holes = parameters[11]
     reward_mode = parameters[12]
+    layer_dimensions = parameters[13]
 
     successes = 0
     for i in range(num_sims):
         print("Progress: " + str(round(100*i/num_sims,2)) + "%")
         # Create the agent
         # Create the agent
-        rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode)
+        rl_agent = Agent(critic_mode, discount, alpha_a, alpha_c,
+            epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode, layer_dimensions)
         # Run the learning simulation
         if critic_mode == 1: # Table
             pegs_left = rl_agent.learning(e_0, epsilon_mode)
         else: # NN
             pegs_left = rl_agent.nn_learning(e_0, epsilon_mode)
-        # Run the learning simulation
-        pegs_left = rl_agent.learning(e_0, epsilon_mode)
         # Test the policy
         finale_episode = rl_agent.run()
         if rl_agent.sim.pegs_left(finale_episode[-1]) == 1:

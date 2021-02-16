@@ -212,7 +212,7 @@ class SW:
             # Each step
             reward = 0.1
             if n_pegs == 1:
-                # YOU WON!
+                print("YOU WON!")
                 reward = 100000
             elif self.final_state(state_2):  
                 # Lost
@@ -241,11 +241,11 @@ class SW:
         elif mode == 3: # Setup 7: The recomended
             reward = 0
             if n_pegs == 1:
-                # YOU WON!
-                reward = 100000000000
+                print("YOU WON!")
+                reward = 100
             elif self.final_state(state_2): 
                 # Lost
-                reward = -10
+                reward = -100
 
         return reward
         
@@ -308,7 +308,7 @@ class SW:
                     board[row][col1] = 1
                 for col2 in range(row+1, board_size):
                     # Adding unused nodes
-                    board[row][col2] = -1
+                    board[row][col2] = 2
             
             '''Now initialize the holes'''
             # Number of holes inserted. (Initial_holes >= 1)
