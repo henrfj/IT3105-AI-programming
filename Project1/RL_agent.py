@@ -1,5 +1,5 @@
 '''
-RL_engine
+RL_engine.
 '''
 # My own modules
 from actor import Actor
@@ -17,29 +17,26 @@ class Agent:
     Superclass of the RL engine. 
     Communicates with the simworld, passing and reading arguments.
 
-    Usint the popular actor-ctitic version of TD(lambda) learning, with eligibility traces.
+    Using the actor-ctitic version of TD(lambda) learning, with eligibility traces.
     Eligibility traces are used to update both PI and V. 
-    Two modes exists:
+    Two modes exists / critic_mode:
         1. Value function stored as dictionary
         2. Value function approximated by NN
 
     The TD error / delta, signify the outcome of the actors move. Big delta = "better than expected", small delta.
     '''
     def __init__(self, critic_mode, discount,
-     alpha_a, alpha_c, epochs, lambda_a, lambda_c, board_type, board_size, initial_holes, reward_mode, layer_dimensions):
-        '''
-        Parameters:
-            -> value_mode: mode for value function. 0: dictionary, 1: NN
-            ->
-        '''
+     alpha_a, alpha_c, epochs, lambda_a, lambda_c,
+      board_type, board_size, initial_holes, reward_mode, layer_dimensions):
         # RL parameters
         self.critic_mode = critic_mode
         self.epochs = epochs
         self.discount = discount
         self.reward_mode = reward_mode
 
-        # The two players
+        # The actor
         self.actor = Actor(discount, alpha_a, lambda_a)
+        # The critic
         if critic_mode == 1:
             self.critic = Critic(discount, alpha_c, lambda_c)
         else:
@@ -49,10 +46,11 @@ class Agent:
         
         # The board used for simulations field
         self.sim = SW(board_type, board_size, initial_holes)
-        #print("Board to learn:\n", self.sim.state)
+        print("Board to learn:\n", self.sim.state)
 
     # Learning 
-    def learning(self, e_0, epsilon_mode):
+    def learning(self, e_0, epsilon_mode, epsilon_decay):
+        '''Actor critic TD learning, with table based actor and critic'''
         # Initial V with some small value
         self.critic.V = {}
 
@@ -69,11 +67,9 @@ class Agent:
         pegs_left = [] # For plotting progression
         for i in range(self.epochs):
             # Print progress
-            #if i%(int(0.5*self.epochs/10)) == 0:
-            #    print("Learning progress: "+str(100*i/self.epochs)+"%")
-  
-            # Stores visited states in a list.
-            # Used for eligibility tracing.
+            if (100*i/self.epochs)%5 == 0:
+                print("Learning progress: "+str(100*i/self.epochs)+"%")
+            # Stores visited states in a list. Used for eligibility tracing.
             episode = []
 
             # Reset eligibilites
@@ -90,7 +86,7 @@ class Agent:
             # Initial action. Action = (state, next_state)
             possible_moves = self.sim.child_states(state)
             # Determine first action.
-            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
+            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, epsilon_decay, episode_nr=i, epochs=self.epochs))
 
             # Iterate over an episode.
             while (not self.sim.final_state(state)):
@@ -102,7 +98,7 @@ class Agent:
                 # 2
                 # Actor find next action based on the updated board-state.
                 possible_moves = self.sim.child_states(next_state)
-                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
+                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(epsilon_mode, e_0, epsilon_decay, episode_nr=i, epochs=self.epochs))
                 
                 # 3
                 # Eligibility updated based on "old" state s, and "old action" a
@@ -137,9 +133,9 @@ class Agent:
                     self.actor.update_e(s, a, 2)
 
                 # 7
-                # Update before proceeding
+                # Update state and action before proceeding.
                 state = np.copy(next_state)
-                try: # if next-state is end-state, then next move is -1
+                try: # if next-state is end-state, then next move is -1.
                     next_state = np.copy(next_move)
                 except:
                     next_state = next_move
@@ -152,29 +148,26 @@ class Agent:
         return pegs_left
     
     ## NN learning
-    def nn_learning(self, e_0, epsilon_mode):
+    def nn_learning(self, e_0, epsilon_mode, epsilon_decay):
+        '''Actor critic, with table based actor and critic with funcapp.'''
         # Initial net V.
-        #start = time.time()
         self.critic.initialize_V()
-        #end = time.time()
-        #print("Initialize critic:", end - start)
         # Initial PI, no value associaiton: PI(s,a) = 0
         self.actor.PI = {}
-        
-        # Checks if the first state is "impossible"
+        # Checks if the first state is "impossible".
         if (self.sim.final_state(self.sim.state)):
             print(self.sim.state)
             print("No learning possible, impossible state.")
             return 0
-
+        
         # Run an entire epoch of episodes. i later used for plotting.
-        pegs_left = [] # For plotting progression
+        pegs_left = [] # For plotting progression.
         for i in range(self.epochs):
             # Print progress
-            print("Learning progress: "+str(round(100*i/self.epochs, 2))+"%")
+            if (100*i/self.epochs)%5 == 0:
+                print("Learning progress: "+str(100*i/self.epochs)+"%")
   
-            # Stores visited states in a list.
-            # Used for eligibility tracing.
+            # Stores visited states in a list. Used for bootstrapping in the actor.
             episode = []
 
             # Reset eligibilites
@@ -182,94 +175,47 @@ class Agent:
             self.critic.initialize_e()
 
             # Reset board for this episode.
-            #start = time.time()
             self.sim.reset_board()
-            #end = time.time()
-            #print("Reset board:", end - start)
-            
+
             # Initial state
             state = self.sim.state
             episode.append(state)
 
             # Initial action. Action = (state, next_state)
-            #start = time.time()
             possible_moves = self.sim.child_states(state)
-            #end = time.time()
-            #print("Find possible moves", end - start)
-            
-            # Determine first action.
-            
-            #start = time.time()
-            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
-            #end = time.time()
-            #print("Chose next state", end - start)
-            
+            next_state = self.actor.action_selection(state, possible_moves, self.epsilon(epsilon_mode, e_0, epsilon_decay, episode_nr=i, epochs=self.epochs))
+        
             # Iterate over an episode.
             state_target = [] # if we want to  batch up an entire episode. Could speed up.
             while (not self.sim.final_state(state)):
                 # 1
                 # Doing the action, getting a reward, updating the board.
-                #start = time.time()
                 reward = self.sim.reward(state, next_state, self.reward_mode)
-                #end = time.time()
-                #print("Reward calculation", end - start)
-                #start = time.time()
                 self.sim.set_board_state(next_state)
-                #end = time.time()
-                #print("Set board state", end - start)
 
                 # 2
                 # Actor find next action based on the updated board-state.
-                #start = time.time()
                 possible_moves = self.sim.child_states(next_state)
-                #end = time.time()
-                #print("Find moves again", end - start)
-                
-                #start = time.time()
-                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(epsilon_mode, e_0, episode_nr=i, epochs=self.epochs))
-                #end = time.time()
-                #print("Choose moves again", end - start)
+                next_move = self.actor.action_selection(next_state, possible_moves, self.epsilon(epsilon_mode, e_0, epsilon_decay, episode_nr=i, epochs=self.epochs))
 
                 # 3
                 # Eligibility updated based on "old" state s, and "old" action a. e(s,a) <- 1
-                #start = time.time()
                 self.actor.update_e(state, next_state, 1) # Actor keeps SAP based eligibilites
-                #end = time.time()
-                #print("Update actor e", end - start)
                 
                 # 4
                 # Critic critisises. Using NN to predict, and reward + NN to make a target.
-                
-                # TODO: calculate input_size elsewhere, used at several places.
-                #start = time.time()
                 state_input = self.state_to_input(state, self.sim.board_size, self.sim.board_type)
                 next_state_input = self.state_to_input(next_state, self.sim.board_size, self.sim.board_type)
-                #end = time.time()
-                #print("Convert to stately inputs", end - start)
-                
                 # Model predictions
-                #start = time.time()
                 V_theta = self.critic.split_model.model.predict(state_input)
-                
                 V_star = reward + self.discount*self.critic.split_model.model.predict(next_state_input)
-                #end = time.time()
-                #print("Make model prediction", end - start)
-                
-                
                 # Save all state-targets for later use (state stored in input-format)
                 state_target.append((state_input, V_star))
                 # TD error for this state-pair
-                
-                #start = time.time()
                 delta = self.critic.update_delta(V_star, V_theta)
-                #end = time.time()
-                #print("Calculate TD error:", end - start)
-
-                # 5 - Eligibilites are different for critic now. (e(s) <- 1)
-                # They are updated and kept in "update_gradient" function.
-                
+            
                 # 6
-                # Do learning, based on eligibilities.
+                # Do actor learning, based on eligibilities and delta.
                 episode.append(next_state) # Add a to the list.
                 for j in range(0, len(episode)-1):
                     # Bookkeeping
@@ -283,24 +229,9 @@ class Agent:
                     self.actor.update_e(s, a, 2)
 
                 # 6.5
-                # We do the learning for the critic. 
-                # TODO: We could save up deltas/TD-errors and states for one episode: 50% increased speed!
-                # TODO: This makes no sense, no need to retrain for each one? All weights will be updated anyways,
-                # based on eligibiliy.
-                # If we want to call fit() after an entire episode - reset elig. at beginning of en episode.
-                # TODO: We reset eligibilities every round. Does this solution make any sense? - probably yes.
-                
-                #start = time.time()
+                # Run fit() on the NN. Update gradients based on a lot of factors.
                 self.critic.update_V(state_input, V_star)
-                #end = time.time()
-                #print("Train NN once:", end - start)
                 
-                '''
-                for j in range(len(state_target)):
-                    # Do learning
-                    # Takes care of eligibilities and all.
-                    self.critic.update_V(state_target[j][0], state_target[j][1])
-                '''
                 # 7
                 # Update before proceeding
                 state = np.copy(next_state)
@@ -308,7 +239,6 @@ class Agent:
                     next_state = np.copy(next_move)
                 except:
                     next_state = next_move
-
                 
             # How well did this run fare?
             pegs_left.append(self.sim.pegs_left(state))
@@ -316,10 +246,11 @@ class Agent:
         # Returned to show progression of the learning
         return pegs_left
 
-    # Demonstrating
+    # Run the simulation once, with current policy.
     def run(self):
         '''
-        Runs on the completed PI. Epsilon = 0.
+        Runs on the the current PI. Epsilon = 0.
+        Returns the episode.
         '''
         # Saves the episode for animation.
         episode = []
@@ -335,10 +266,10 @@ class Agent:
             state = self.actor.action_selection(state, possible_moves, self.epsilon(0, 0, 0))
             episode.append(state)
         
-        
         return episode
+    
     # Calculating epsilon for the epsilon-greedy algorithm.
-    def epsilon(self, mode, e_0, episode_nr=0, epochs=0):
+    def epsilon(self, mode, e_0, epsilon_decay=0, episode_nr=0, epochs=0):
         '''
         Mode 0 (default): For full greed.
         
@@ -346,9 +277,9 @@ class Agent:
 
         Mode 2: Linear decent
 
-        Mode 3: logarithmic decay / inverse sigmoid
+        Mode 3: Flat then linear halfway.
 
-        Mode 4: ReLu-like behaviour
+        Mode 4: Decay rate.
         '''
         # Mode 1
         if mode == 1:
@@ -363,14 +294,14 @@ class Agent:
                 return e_0
             else:
                 return (e_0 - e_0*(episode_nr - epochs*0.5)/(epochs*0.5))
-        # Mode 0
-
+        
+        # Mode 4
         if mode == 4:
-            if (episode_nr/epochs) < 0.9:
-                return (e_0 - e_0*episode_nr/(epochs*0.9))
-            else:
-                return 0
+            return e_0 * epsilon_decay**episode_nr
+        
+        # Mode 0
         return 0
+    
     # Compute size of NN input. Used to create new nn.
     def compute_input_size(self, board_type, board_size):
         if board_type == BT.DIAMOND:
@@ -382,9 +313,13 @@ class Agent:
             return size
         else:
             raise TypeError("No board size defined.")
+    
     # Make states into input for 
     def state_to_input(self, state, board_size, board_type):
-        ''' Turns the size*size matrix into an input for NN'''
+        ''' 
+        Turns the state matrix into an input for NN,
+        by unfolding the rows.
+        '''
        
         if board_type == BT.DIAMOND:
             i = 0

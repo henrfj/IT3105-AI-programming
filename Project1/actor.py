@@ -1,10 +1,10 @@
 '''
-Docstring
+Module containing the actor, in the TD actor - critic model.
 '''
-# used for random-epsilon action selection.
-from random import randint, uniform
-import numpy as np
-import ast
+# Libraries.
+from random import randint, uniform # Used to make epsilon random moves.
+import numpy as np                  # Nice matrix operations.
+import ast                          
 import re
 
 class Actor:
@@ -15,7 +15,6 @@ class Actor:
     to balance exploration and exploitation throughout the run.
     => Alternatively we could use boltzmanns scaling to choose stochastically.
     '''
-    # TODO: look into normalizing the policy distribution. 
     def __init__(self, discount, alpha_a, lambda_a):
         # Dictionart structure(state1): [(state2_1, value), (state2_2, value), ...]
         self.PI = {}
@@ -26,6 +25,7 @@ class Actor:
         self.alpha_a = alpha_a
         self.lambda_a = lambda_a
     
+    # Selects an action based on possible actions.
     def action_selection(self, state, possible_moves, epsilon):
         '''
         Possible moves: dictionary of all childstates of state. Keys are indexes.
@@ -89,6 +89,7 @@ class Actor:
         
         return best_move
 
+    # Updates the policy based on a delta.
     def update_PI(self, state, next_state, delta):
         '''
         Updates policy PI based on TD error delta.
@@ -97,7 +98,8 @@ class Actor:
         SAP = (str(state),str(next_state))
         current_policy = self.PI[SAP]
         self.PI[SAP] = current_policy + self.alpha_a * delta * self.eligibility[SAP]
-        
+    
+    # Updates the eligibility, in different ways.
     def update_e(self, state, next_state, mode):
         '''
         Actor keeps SAP based eligibilities.
@@ -112,42 +114,3 @@ class Actor:
             self.eligibility[SAP] = 1
         if mode==2:
             self.eligibility[SAP] *= (self.discount * self.lambda_a)
-            
-    def normalize_policy(self, state, possible_moves):
-        '''
-        Normalizing SAPs from a single state. Makes it into a distribution,
-        that could be used for selection (but we use epsilon). 
-        '''
-        # Find scale, to normalize negative and positive numbers
-        minimum = 0
-        for i in range(len(possible_moves)):
-            action = possible_moves[i]
-            SAP = (str(state),str(action))
-            if self.PI[SAP] < minimum:
-                minimum = self.PI[SAP]
-
-        # Normalize
-        total = 0
-        for i in range(len(possible_moves)):
-            action = possible_moves[i]
-            SAP = (str(state),str(action)) 
-            self.PI[SAP] += (abs(minimum)) #+ 1)
-            total += self.PI[SAP]
-            
-
-        for i in range(len(possible_moves)):
-            action = possible_moves[i]
-            SAP = (str(state),str(action))
-            try: # AS long as total =/= 0
-                self.PI[SAP] *= 1/total
-            except:
-                pass
-        
-        # For debugging
-        actions = []
-        for i in range(len(possible_moves)):
-            action = possible_moves[i]
-            SAP = (str(state),str(action))
-            actions.append(self.PI[SAP])
-        print("Normalized selection:" + str(actions))
-

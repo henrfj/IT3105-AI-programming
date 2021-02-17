@@ -1,4 +1,5 @@
 '''
+The Class of the NN based critic.
 '''
 # Libraries
 import tensorflow as tf
@@ -11,30 +12,28 @@ import numpy as np
 import splitGD as SGD
 
 class NN_Critic:
+    '''The class of the NN based Critic'''
     def __init__(self, discount, alpha_c, lambda_c, layer_dimensions, input_size):
-        # Using V(s): Key is state, returns value of state. Actor passes state to critic(*), 
-        # who returns calculated TD error for given state.
-        
         # Critic data.
-        # Weigts are stored as a list, from 0->N. 
-        self.eligibility = {}
+        # Weigts are stored as a list of tensors, one for each layer. 
+        self.eligibility = []
+        # TD error.
         self.delta = 0
-        #self.expected_value = {} # Why do I keep this list?
 
         # RL parameters
-        self.discount = discount
-        self.alpha_c = alpha_c
-        self.lambda_c = lambda_c
+        self.discount = discount    # Gamma, discount rate.
+        self.alpha_c = alpha_c      # Learning rate alpha.
+        self.lambda_c = lambda_c    # Eligibility decay lambda.
 
         # NN parameters
         self.layer_dimensions = layer_dimensions    # List of hidden layer dimensions.
         self.n_layers = len(self.layer_dimensions)  # Number of hidden layers used.
-        self.input_size = input_size
-
-        # V is initialized each epoch
-
-    def initialize_V(self):
+        self.input_size = input_size                # Size of input required by NN.
         
+    # Initialize the NN (once for each epoch)
+    def initialize_V(self):
+        '''Initialize NN based on n-layers and input size.'''
+       
         # Sequential model.
         model = ker.Sequential()
        
@@ -43,46 +42,55 @@ class NN_Critic:
         
         # A number of hidden layers
         for i in range(self.n_layers):
-            #model.add(ker.layers.Dense(self.input_size, activation='tanh'))
+            # Adds dense layers of different dimensions.
             model.add(ker.layers.Dense(self.layer_dimensions[i], activation='tanh'))
         
         # Output layer.
-        # TODO: Linear activation function - can have all kinds of values. => Sucks for some reason...
-        # Tanh works fine on Diamond at least. Only means that values are in range (1, -1)
-        # Can also avoid adding activation function all together.
+        # Activation "tanh" works best. 
         model.add(ker.layers.Dense(1, activation='tanh'))
 
         # Compiling the model.
         model.compile(optimizer=ker.optimizers.SGD(learning_rate=(self.alpha_c)), loss=ker.losses.MeanSquaredError(), metrics=['accuracy'])
-        #model.summary()
-        ker.utils.plot_model(model, "my_sequential_model.png", show_shapes=True)
+        model.summary()
+        
+        # Save the model structure as a png.
+        ker.utils.plot_model(model, "Current_model.png", show_shapes=True)
+        
         # Now the model is ready for fitting, but we need to split it.
         self.split_model = SGD.SplitGD(model, self)
         
+    # Initialize eligibility (once for each episode) 
     def initialize_e(self):
         ''' 
         Reset at start of each simulation.
+        Is a list of tensors, one layer for each layer of the NN.
         '''
         # Will be initialized once we have the shape of gradients.
         self.eligibility = []
 
+    # Update the NN by fitting a single feature and target.
     def update_V(self, input_state, target):
         '''
         INPUT: the current state, transformed to input-format
-        TARGET: the previouslycalculated target of the input.
+        TARGET: the previously calculated target of the input.
 
         **Bootstrapping**: we go back over all state pairs, and 
         based on the newly found reward -> delta, we update weights
         who were active this episode, based on eligibility.
         '''
         # Verbosity = level of printing
+        # vfrac = fraction of data kept as training data.
         self.split_model.fit(input_state, target, vfrac=0, verbosity=0)
 
+    # Update delta based on TD-error algorithm.
     def update_delta(self, V_star, V_theta):
         ''' Calculates new delta, using NN prediction'''
+        # V_star and V_theata are both outputs of the NN, 
+        # and are of shape (1,1) - we would like a scalar delta.
         self.delta = (V_star - V_theta)[0][0]
         return self.delta
     
+    # Update gradients, used by splitGD.modify_gradients()
     def update_gradients(self, gradients):
         '''
         Function called inside of splitGD in order to update the gradients, using eligibility.
@@ -128,35 +136,3 @@ class NN_Critic:
         return gradients
 
 
-'''
-# 1
-# Turn gradients into one long list og dV/dw_i
-grad = [] # All weight-specific gradients dV/dw
-for layer in range(len(gradients)): # Run through all layers
-    try:
-        for node in range(len(gradients[layer])): # Run through all nodes in layer
-            try:
-                for weight in range(len(gradients[layer][node])): # Run throug all the nodes
-                    grad.append(gradients[layer][node][weight].numpy())
-            
-            except: # gradients[layer][node] is a scalar. This is the input layer (16, 1)          
-                grad.append(gradients[layer][node].numpy())
-    
-    except: # gradients[layer] is a scalar. This is the output weight (1, )
-        grad.append(gradients[layer].numpy())
-    
-# 2
-for i in range(len(grad)):
-    try:
-        self.eligibility[i] = self.eligibility[i] + grad[i]
-    except:
-        self.eligibility[i] = grad[i]
-
-## Update gradients.
-for i in range(len(grad)):
-    grad[i] += self.alpha_c * self.delta * self.eligibility[i]
-
-# Decay eligibilities.
-for i in range(len(self.eligibility)):
-        self.eligibility[i] *= self.discount * self.lambda_c
-'''

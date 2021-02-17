@@ -1,3 +1,8 @@
+'''
+Module used to visualize games of peg solitaire.
+'''
+
+# Libraries
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +18,6 @@ class Display:
 
     def __init__(self): 
         self.graph = nx.Graph()
-
 
     def display_board(self, state, board_type, board_size):
         '''
@@ -100,7 +104,6 @@ class Display:
 
         return adjacency
 
-
     def color_nodes(self, state, board_type, board_size): 
         '''
         Colors the nodes accordingly.
@@ -150,7 +153,6 @@ class Display:
                 n_l_counter += 1
 
         return color_map
-
 
     def node_pos(self, state, board_type, board_size):
         nodepos={}

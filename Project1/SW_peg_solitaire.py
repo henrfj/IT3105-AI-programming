@@ -1,9 +1,9 @@
 '''
-The simulated worlds (SW) for this project, peg solitaire.
-
+Module containing the simulated worlds (SW) for this project,
+a game of "peg solitaire".
 '''
 
-
+# Libraries
 import copy
 import random as rd
 from enum import Enum
@@ -23,7 +23,7 @@ class SW:
         # Setting recurring parameters
         self.board_size = board_size
         self.board_type = board_type
-        self.initial_holes = initial_holes
+        self.initial_holes = initial_holes # List of tuples: locations of initial holes.
 
         # Initiate some initial board, then update it
         #self.state = np.zeros(board_size**2)
@@ -31,6 +31,7 @@ class SW:
         # To have same board over several episodes
         self.base_board = np.copy(self.state)
 
+    # Makes a hypothetical move, returns the resulting state.
     def make_move(self, state, pos1, pos2):
         ''' 
         Makes a single move, and returns the new state.
@@ -65,6 +66,7 @@ class SW:
 
         return new_state
 
+    # Returns all child-states of a given state.
     def child_states(self, state):
         '''
         Finds all possible child-states given a parent state
@@ -172,6 +174,7 @@ class SW:
 
         return child_states
 
+    # Decides if a state is a final state.
     def final_state(self, state):
         '''
         Finds out if there are no more possible moves. 
@@ -186,6 +189,7 @@ class SW:
             return True
         return False
 
+    # Returns number of pegs left standing.
     def pegs_left(self, state):
         '''Calculate number of pins left
         '''
@@ -199,6 +203,7 @@ class SW:
 
         return n
 
+    # Returns the reward given for a transition.
     def reward(self, state_1, state_2, mode=0):
         '''
         Returns reward for a transition
@@ -208,8 +213,16 @@ class SW:
 
         reward = None
         n_pegs = self.pegs_left(state_2)
-        if mode == 0: # Setup 4: Old giant - best performer.
-            # Each step
+        if mode == 0: # Best performer.
+            
+            # Each step rewarded: Two reasons why
+            #   1: Having to choose between two already visited paths, 
+            #       it will choose the longest (the path where it got closest).
+            #   2: If there are no solutions to the board, it will coverge 
+            #       to the closest possible solution.
+            #   
+            #   0.1 is small enough, that it will always prioritize new, unexplored patsh anyways.
+            
             reward = 0.1
             if n_pegs == 1:
                 print("YOU WON!")
@@ -218,43 +231,45 @@ class SW:
                 # Lost
                 reward = -10
         
-        elif mode == 1: # Scaled reward. Often converge on 2.
+        elif mode == 1: # Try to scale the 0 mode.
             # Each step
-            reward = 0.1
+            reward = 1
             if n_pegs == 1:
-                # YOU WON!
+                print("YOU WON!")
                 reward = 10000
             elif self.final_state(state_2): 
                 # Lost
-                reward = -n_pegs + 2
+                reward = -20
 
-        elif mode == 2: # Setup 6: small penalty was the best performer.
+        elif mode == 2: # Small penalty.
             reward = -0.1
             if n_pegs == 1:
-                # YOU WON!
+                print("YOU WON!")
                 reward = 100000
 
             elif self.final_state(state_2): 
                 # Lost
                 reward = -10
 
-        elif mode == 3: # Setup 7: The recomended
+        elif mode == 3: # The recomended.
             reward = 0
             if n_pegs == 1:
                 print("YOU WON!")
-                reward = 100
+                reward = 100000000000
             elif self.final_state(state_2): 
                 # Lost
                 reward = -100
 
         return reward
-        
+    
+    # Sets the current board state.
     def set_board_state(self, new_state): 
             '''
             Simple setter for updating the state of the board.
             '''
             self.state = new_state
 
+    # Creates a new board, based on parameters.
     def new_board(self):
         '''
         Create a new board for a new game.
@@ -276,21 +291,10 @@ class SW:
                     board[row][col] = 1
 
             '''Now initialize the holes'''
-            # Number of holes inserted. (Initial_holes >= 1)
-            n = 1
-            # Initial hole created close to the center
-            board[((board_size)//2)][((board_size-1)//2)] = 0
-
-            # Crude, but doing the job
-            while n < initial_holes:
-                row = rd.randint(0, board_size-1)
-                col = rd.randint(0, board_size-1)
-
-                if (board[row][col] != 0):
-                    board[row][col] = 0
-                    n+=1
-
-            self.state = board
+            # Initial hole created close to the center.
+            # Holes need to be along the horisontal axis.
+            if len(initial_holes) == 0:
+                board[((board_size)//2)][((board_size-1)//2)] = 0
 
         elif (board_type is BT.TRIANGLE):
             '''
@@ -311,24 +315,26 @@ class SW:
                     board[row][col2] = 2
             
             '''Now initialize the holes'''
-            # Number of holes inserted. (Initial_holes >= 1)
-            n = 1
-            # Initial hole created close to the center of the triangle
-            board[(board_size//2)][(board_size//2)//2] = 0
-
-            # Crude, but doing the job
-            while n < initial_holes:
-                row = rd.randint(0, board_size-1)
-                col = rd.randint(0, board_size-1)
-
-                if (board[row][col] == 1):
-                    board[row][col] = 0
-                    n+=1
-
-            self.state = board
+            # Initial hole created close to the center of the triangle.
+            if len(initial_holes) == 0:
+                board[(board_size//2)][(board_size//2)//2] = 0
+            
         else:
             raise Exception("This is no board type")
+    
+        for pos in initial_holes:
+            row = pos[0]
+            col = pos[1]
+            if row >= self.board_size and col >= self.board_size:
+                raise IndexError("Trying to place hole outside board")
+            if board[row][col] == 1 or board[row][col] == 0:
+                board[row][col] = 0
+            else: # outside playing field of triangle
+                raise IndexError("Trying to place hole outside playing field")
+        
+        self.state = board
 
+    # Resets the board between each game.
     def reset_board(self):
         '''
         Reset board in between episodes during learning. 
