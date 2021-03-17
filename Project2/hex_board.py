@@ -1,7 +1,5 @@
-import numpy as np
-
-
-
+# IMPORTS
+import numpy as np # States kept as np arrays.
 
 class hex_board:
     '''
@@ -29,10 +27,8 @@ class hex_board:
         # Contains 0s and 1s. 1D to find moves.
         self.possible_moves = np.ones(k*k)     
         
-        # Contains (x,x) - connection to the two edges
-        value = np.empty((), dtype=object)
-        value[()] = (0, 0)
-        self.edge_connections = np.full((k, k), value, dtype=object)
+        # Contains (x,x) - connection to the two edges. 3D array.
+        self.edge_connections = np.zeros((k, k, 2))
         
     def flatten_state(self, state):
         ''' Flatten state to 1D array. Add player ID tag at beginning.'''
@@ -49,33 +45,32 @@ class hex_board:
     def child_states(self):
         '''Returns list of all child states given current state.'''
         # Contains list of child-states, and pos. of newly placed piece.
-        children = {}
+        children = []
         for i in range(len(self.possible_moves)):
             if self.possible_moves[i] == 1: # Spot is free.
                 child = np.copy(self.state)
                 col = i%self.k
                 row = i//self.k
                 child[row][col] = self.player_turn
-                children[child] = (row,col) # Position of last move. Used to display.
+                children.append([child, (row,col)]) # [New_state, last move (row, col)]
         return children
         
     def make_move(self, new_state, pos):
-        '''Make a move from current state, to new_state'''
+        '''Make a move from current state, to new_state'''        
         # Make sure to make a copy
         self.state = np.copy(new_state)
         
-        # Update the idle state
-        # TODO: pos is converted from 1D -> 2D -> 1D within a single move. Is it needed?
-        # Could keep it as 1D. But 2D is easier for displaying i believe.
+        # Remove 
         row = pos[0]
         col = pos[1]
         if self.possible_moves[row*self.k + col] != 1:
-            raise Exception("Try to make illegal move.") 
+            raise Exception("Trying to make illegal move!") 
         else:
-            self.possible_moves[row*self.k + col] = 1
+            self.possible_moves[row*self.k + col] = 0 
         
         # Set initial edge-config
         self.on_edge(self.player_turn, pos)
+        
         # Spread news around to neighbours, if any.
         self.spread_news(self.player_turn, pos)
         
@@ -141,13 +136,13 @@ class hex_board:
             if self.state[row][col+1] == player_ID:
                 neighbours_pos.append((row, col+1))
         # NORTH EAST
-        if (col+1) <= (self.k-1) and (row+1) <= (self.k-1):
-            if self.state[row+1][col+1] == player_ID:
-                neighbours_pos.append((row+1, col+1))
+        if (col+1) <= (self.k-1) and (row-1) >=0:
+            if self.state[row-1][col+1] == player_ID:
+                neighbours_pos.append((row-1, col+1))
         # SOUTH WEST
-        if (col-1) >= 0 and (row-1) >= 0:
-            if self.state[row-1][col-1] == player_ID:
-                neighbours_pos.append((row-1, col-1))
+        if (col-1) >= 0 and (row+1) <= (self.k-1):
+            if self.state[row+1][col-1] == player_ID:
+                neighbours_pos.append((row+1, col-1))
         # Return the list of all neighbour pos on the board.
         return neighbours_pos
 
@@ -189,18 +184,20 @@ class hex_board:
                 gave_update = True
 
             # Keep spreading
+            # TODO: Problem! What if the last neighbour is the one that has the news.
             if got_update:
-                self.spread_news(player_ID, n_pos) # spread to every single neighbour.
+                self.spread_news(player_ID, pos) # Restart spreading to every single neighbour.
+                break # We restarted spreading, no need to do it again.
             if gave_update: 
-                self.spread_news(player_ID, n_pos) # Only spread around the reciever.
+                self.spread_news(player_ID, n_pos) # Spread around the reciever.
                 gave_update = False
 
     def final_state(self, player_ID, pos):
         ''' Cheks for V by looking for a (1,1) in the edge_connection
         Player ID: {1,2}
         Pos: (row,col)'''
-        if self.edge_connections[pos[0]][pos[1]] == (1,1):
-            print("Player",player_ID,"won!")
+        if self.edge_connections[pos[0]][pos[1]][0] == 1 and self.edge_connections[pos[0]][pos[1]][1] == 1:
+            #print("Player",player_ID,"won!")
             self.game_over = True
             self.winner = player_ID
 
