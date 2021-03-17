@@ -12,13 +12,12 @@ class hex_board:
         '''Init'''
         self.k = k
         self.initialize_states()
-        self.player_turn = 0       # ID 0 (p1) and 1 (p2) for whos turn it is.
+        self.player_turn = 1       # ID 1 (p1) and 2 (p2) for whos turn it is.
         self.initialize_states()
 
         # Game over
         self.game_over = False
         self.winner = 0
-
 
     def initialize_states(self):
         '''Initialize all states. Can be used to reset game.'''
@@ -34,10 +33,10 @@ class hex_board:
         value = np.empty((), dtype=object)
         value[()] = (0, 0)
         self.edge_connections = np.full((k, k), value, dtype=object)
-         
-
+        
     def flatten_state(self, state):
         ''' Flatten state to 1D array. Add player ID tag at beginning.'''
+        # TODO: look into the (0,0), (1,0), (0,1) representation. 
         k = self.k
         flat = np.zeros(k**2+1)
         for row in range(k):
@@ -56,7 +55,7 @@ class hex_board:
                 child = np.copy(self.state)
                 col = i%self.k
                 row = i//self.k
-                child[row][col] = self.player_turn+1 # Player turn is 0 indexed.
+                child[row][col] = self.player_turn
                 children[child] = (row,col) # Position of last move. Used to display.
         return children
         
@@ -75,54 +74,135 @@ class hex_board:
         else:
             self.possible_moves[row*self.k + col] = 1
         
-        # Update the edge-states.
-        # 1
-        if self.on_edge(self.player_turn+1, pos):
-            self.spread_news(self.player_turn+1, pos)
-        # 2
-        self.copy_neighbours(self.player_turn+1, pos)
-
+        # Set initial edge-config
+        self.on_edge(self.player_turn, pos)
+        # Spread news around to neighbours, if any.
+        self.spread_news(self.player_turn, pos)
+        
         # Check for victory
-        # TODO: should check for victory each time we update the edge_connection
+        self.final_state(self.player_turn, pos)
 
-        # change player ID
-        if self.player_turn == 0:
-            self.player_turn = 1
+        # change player turn / player ID
+        if self.player_turn == 1:
+            self.player_turn = 2
         else:
-            self.player_turn = 0
-
+            self.player_turn = 1
 
     def on_edge(self, player_ID, pos):
         '''Checks to see if the position is an edge position for the given player
+        Sets the corner ID of self.edge_connections (1,0), (0,1) or (0,0)
         Player ID: {1,2}
         Pos: (row,col)
         '''
-        pass
+        # Translate pos to row / col.
+        row = pos[0]
+        col = pos[1]
+
+        # Player 1 has the top and bottom row. state[0][:] and state [k-1][:]
+        if player_ID == 1:
+            if row == 0: # TOP
+                self.edge_connections[row][col] = (1,0)
+            elif row == self.k-1: # Bottom
+                self.edge_connections[row][col] = (0,1)
+            else: # No edge
+                self.edge_connections[row][col] = (0,0) # No edge
+        # Player 2 has the left and right edges. State[:][0] and state [:][k-1]
+        elif player_ID == 2:
+            if col == 0: # Left
+                self.edge_connections[row][col] = (1,0)
+            elif col == self.k-1: # Right
+                self.edge_connections[row][col] = (0,1)
+            else: # No edge
+                self.edge_connections[row][col] = (0,0) 
+        else:
+            raise Exception("Invalid player ID in on-edge check.")
 
     def get_neigbours(self, player_ID, pos):
-        '''Get position of all friendly neighbours
+        '''Get position of all friendly neighbours, simple diamond-logic used.
         Player ID: {1,2}
         Pos: (row,col)'''
-        pass
-
-    def copy_neighbours(self, player_ID, pos):
-        '''Copy the data of all friendly neighbours
-        Player ID: {1,2}
-        Pos: (row,col)'''
-        pass
+        row = pos[0]
+        col = pos[1]
+        neighbours_pos = [] # filled with pos := (row,col)
+        # DOWN
+        if (row-1) >= 0:
+            if self.state[row-1][col] == player_ID:
+                neighbours_pos.append((row-1, col))
+        # UP
+        if (row+1) <= (self.k-1):    
+            if self.state[row+1][col] == player_ID:
+                neighbours_pos.append((row+1, col))
+        # LEFT
+        if (col-1) >= 0:
+            if self.state[row][col-1] == player_ID:
+                neighbours_pos.append((row, col-1))
+        # RIGHT
+        if (col+1) <= (self.k-1):
+            if self.state[row][col+1] == player_ID:
+                neighbours_pos.append((row, col+1))
+        # NORTH EAST
+        if (col+1) <= (self.k-1) and (row+1) <= (self.k-1):
+            if self.state[row+1][col+1] == player_ID:
+                neighbours_pos.append((row+1, col+1))
+        # SOUTH WEST
+        if (col-1) >= 0 and (row-1) >= 0:
+            if self.state[row-1][col-1] == player_ID:
+                neighbours_pos.append((row-1, col-1))
+        # Return the list of all neighbour pos on the board.
+        return neighbours_pos
 
     def spread_news(self, player_ID, pos):
-        ''' Recursively updates neighbour data until the news are old
+        '''Copy the data to/from all friendly neighbours recursively
         Player ID: {1,2}
-        Pos: (row,col)'''
-        pass
-    
-    def final_state(self, pos):
+        Pos: (row,col)
+        # TODO: Now we ofte check neighbours more than once.
+        '''
+        row = pos[0]
+        col = pos[1]
+        
+        neighbours_pos = self.get_neigbours(player_ID, pos)
+        got_update = False  # Do we need to spread any news?
+        gave_update = False
+
+        for n_pos in neighbours_pos:
+            n_row = n_pos[0]
+            n_col = n_pos[1]
+            
+            # From neighbours
+            # Connection to one edge
+            if self.edge_connections[row][col][0] == 0 and self.edge_connections[n_row][n_col][0] == 1:
+                self.edge_connections[row][col][0] = 1
+                got_update = True
+            # Connection to the other.
+            if self.edge_connections[row][col][1] == 0 and self.edge_connections[n_row][n_col][1] == 1:
+                self.edge_connections[row][col][1] = 1
+                got_update = True
+            
+            # To neighbours
+            # Connection to one edge
+            if self.edge_connections[n_row][n_col][0] == 0 and self.edge_connections[row][col][0] == 1:
+                self.edge_connections[n_row][n_col][0] = 1
+                gave_update = True
+            # Connection to the other.
+            if self.edge_connections[n_row][n_col][1] == 0 and self.edge_connections[row][col][1] == 1:
+                self.edge_connections[n_row][n_col][1] = 1
+                gave_update = True
+
+            # Keep spreading
+            if got_update:
+                self.spread_news(player_ID, n_pos) # spread to every single neighbour.
+            if gave_update: 
+                self.spread_news(player_ID, n_pos) # Only spread around the reciever.
+                gave_update = False
+
+    def final_state(self, player_ID, pos):
         ''' Cheks for V by looking for a (1,1) in the edge_connection
         Player ID: {1,2}
         Pos: (row,col)'''
-        pass
-
+        if self.edge_connections[pos[0]][pos[1]] == (1,1):
+            print("Player",player_ID,"won!")
+            self.game_over = True
+            self.winner = player_ID
 
 
 
