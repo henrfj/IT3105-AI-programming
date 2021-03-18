@@ -12,9 +12,9 @@ import numpy as np # Efficient arrays
 def random_walk_animate(animate=True):
     ''' Animate random walk to test board logic and displat'''
     # PARAMETERs
-    board_size = 10 #k x k
+    board_size = 5 #k x k
     episode = []
-    frame_delay = 1
+    frame_delay = 500
     figsize = (15,15)
      
     # Board and display
@@ -25,20 +25,20 @@ def random_walk_animate(animate=True):
     episode.append(board.state)
     while not board.game_over:
         # Choose random possible move
-        possible_moves = board.child_states() # A dictionary of {moves : pos}
+        possible_moves = board.child_states() # A list of pos'
         index = int(np.random.randint(0, len(possible_moves))) # Random index
-        next_state = possible_moves[index][0] # The next state
-        pos = possible_moves[index][1] # Position of moved piece
+        move = possible_moves[index]
 
-        # Execute move
-        board.make_move(next_state, pos)
-        # Add to episode list
+        # Execute move.
+        board.make_move(move)
+        
+        # Add to episode list, used to animate.
         episode.append(board.state)
 
     if animate:
         # Animate the episode!
         print(board.state)
-        print(board.edge_connections)
+        #print(board.edge_connections)
         display.animate_episode(episode, board_size)
     return board.winner
 
@@ -56,5 +56,5 @@ def random_walk_check_bias(num):
     print("P2:", p2, "\t=>", p2*100/(p1+p2), "% winrate")
 
 
-#random_walk_animate() q
-random_walk_check_bias(50000)
+random_walk_animate() 
+#random_walk_check_bias(1000)

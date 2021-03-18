@@ -3,6 +3,9 @@ Todo list and list of interesting questions from Q&As.
 1. Make the Graph rotate:
     - Possible solution: adjacency matrix made from the mesh matrix.
 
+
+
+
 # Q&A 15.03.2021
 
 1. MCTS own implementation

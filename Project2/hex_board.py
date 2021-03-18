@@ -43,24 +43,24 @@ class hex_board:
         return flat
 
     def child_states(self):
-        '''Returns list of all child states given current state.'''
+        '''Returns list of all moves possible as (x,y) of placed piece.'''
         # Contains list of child-states, and pos. of newly placed piece.
         children = []
         for i in range(len(self.possible_moves)):
             if self.possible_moves[i] == 1: # Spot is free.
-                child = np.copy(self.state)
                 col = i%self.k
                 row = i//self.k
-                child[row][col] = self.player_turn
-                children.append([child, (row,col)]) # [New_state, last move (row, col)]
+                children.append((row,col)) # [New_state, last move (row, col)]
         return children
         
-    def make_move(self, new_state, pos):
-        '''Make a move from current state, to new_state'''        
-        # Make sure to make a copy
-        self.state = np.copy(new_state)
+    def make_move(self, pos):
+        '''Make a move from current state, to new_state given pos (x,y)'''        
+        # Find the new state.
+        new_state = self.state
+        new_state[pos[0], pos[1]] = self.player_turn
+        self.state = np.copy(new_state) # save it internally
         
-        # Remove 
+        # Remove move from possible moves.
         row = pos[0]
         col = pos[1]
         if self.possible_moves[row*self.k + col] != 1:
@@ -197,7 +197,7 @@ class hex_board:
         Player ID: {1,2}
         Pos: (row,col)'''
         if self.edge_connections[pos[0]][pos[1]][0] == 1 and self.edge_connections[pos[0]][pos[1]][1] == 1:
-            #print("Player",player_ID,"won!")
+            print("Player",player_ID,"won!")
             self.game_over = True
             self.winner = player_ID
 

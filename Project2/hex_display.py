@@ -4,7 +4,9 @@ import networkx as nx # Network graph
 from matplotlib import animation # Animating network graphs
 import numpy as np # Efficient arrays
 
-
+### TESTING - ROTATION?
+from matplotlib.transforms import Affine2D
+import mpl_toolkits.axisartist.floating_axes as floating_axes
 
 
 class hex_display:
@@ -20,8 +22,9 @@ class hex_display:
         # Build plot
         fig, ax = plt.subplots(figsize=self.figsize)
 
-
-
+        # Update function to update frames of animation.
+        # 
+        nodepos = self.node_pos(board_size) # TODO: only need to do this once!!
         def update(num):
             '''
             Made to help animator animate the board.
@@ -30,6 +33,7 @@ class hex_display:
             ax.clear()
             # Invert y-axis, as draw uses opposite y than what I intended.
             fig.gca().invert_yaxis()
+        
             # Extract single state.
             state = states[num]
             # Produce a neighbourhood matrix
@@ -38,8 +42,6 @@ class hex_display:
             self.graph = nx.from_numpy_array(neighbour_matrix)
             # Color nodes according to state matrix
             color_map = self.color_nodes(state, board_size)
-            # Try something new: fixed node-positions
-            nodepos = self.node_pos(state, board_size)
             # Draw the current frame
             nx.draw(self.graph, node_color=color_map, with_labels=True,pos=nodepos)
 
@@ -91,21 +93,24 @@ class hex_display:
                 color_map.append("white")
         return color_map
 
-    def node_pos(self, state, board_size):
-        nodepos={}
-        #mesh_size = 2*board_size - 1
-        #i = 0 # Current node 
-        #c = 1 # nodes per layer
-        #for row in range(mesh_size): # Rows
-        #    if row % 2 == 0: # even row
-        #        nodepos[i] = ()
-        #    else:
-        #        pass
-        #
-        #    i += 1
+    def node_pos(self, board_size):
+        nodepos={} # Nodepos needs to be a dict.
+        array_2d = np.ndarray((board_size, board_size), dtype=tuple)
+        # 1
+        # Fill 2d array with initial, un-rotated coordinates of the nodes. 
         for i in range(board_size*board_size):
             row = i // board_size
             col = i - row*board_size
-            nodepos[i] = (col, row)
-        return nodepos
+            array_2d[row, col] = (col, row) # The x and y are reversed.
+            #nodepos[i] = (col, row)
+        
+        # 2
+        # Rotate coordinates clockwise 45 degree.
+        # Then fill nodepos with these rotated coordinates. 
+        for i in range(board_size):
+            for j in range(board_size):
+                (x,y) = array_2d[i,j]
+                array_2d[i,j] = (x-y, y+x) # Found using complex number algebra!
+                nodepos[i*board_size+j] = array_2d[i,j]
 
+        return nodepos
