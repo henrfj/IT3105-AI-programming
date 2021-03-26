@@ -1,5 +1,6 @@
 # IMPORTS
 import numpy as np # States kept as np arrays.
+from copy import deepcopy
 
 class hex_board:
     '''
@@ -11,7 +12,6 @@ class hex_board:
         self.k = k
         self.initialize_states()
         self.player_turn = 1       # ID 1 (p1) and 2 (p2) for whos turn it is.
-        self.initialize_states()
 
         # Game over
         self.game_over = False
@@ -30,35 +30,48 @@ class hex_board:
         # Contains (x,x) - connection to the two edges. 3D array.
         self.edge_connections = np.zeros((k, k, 2))
         
-    def flatten_state(self, state):
-        ''' Flatten state to 1D array. Add player ID tag at beginning.'''
-        # TODO: look into the (0,0), (1,0), (0,1) representation. 
-        k = self.k
-        flat = np.zeros(k**2+1)
-        for row in range(k):
-            for col in range(k):
-                flat[row*k+col+1] = self.state[row][col]
+    def flatten_state(self,):
+        ''' Flatten state to 1D array. Add player ID tag at beginning.''' 
+        flat = np.zeros(self.k**2+1)
+        for row in range(self.k):
+            for col in range(self.k):
+                flat[row*self.k+col+1] = self.state[row][col]
         # Add ID tag.
         flat[0] = self.player_turn
         return flat
 
-    def child_states(self):
+    def possible_moves_pos(self):
         '''Returns list of all moves possible as (x,y) of placed piece.'''
         # Contains list of child-states, and pos. of newly placed piece.
-        children = []
+        moves = []
         for i in range(len(self.possible_moves)):
             if self.possible_moves[i] == 1: # Spot is free.
                 col = i%self.k
                 row = i//self.k
-                children.append((row,col)) # [New_state, last move (row, col)]
-        return children
-        
-    def make_move(self, pos):
-        '''Make a move from current state, to new_state given pos (x,y)'''        
+                moves.append((row,col)) # [New_state, last move (row, col)]
+        return moves
+
+    def random_move(self):
+        '''Returns a random move (x,y) from current state.'''
+        while 1:
+            i = int(np.random.randint(0, len(self.possible_moves)))
+            if self.possible_moves[i] == 1:
+                break
+        col = i%self.k
+        row = i//self.k
+        return (row, col)
+
+    def new_state(self, pos):
+        '''Based on current state, and pos of new move, update state.'''
         # Find the new state.
         new_state = self.state
         new_state[pos[0], pos[1]] = self.player_turn
         self.state = np.copy(new_state) # save it internally
+
+    def make_move(self, pos):
+        '''Make a move from current state, to new_state given pos (x,y)'''        
+        # Update board to new state.
+        self.new_state(pos)
         
         # Remove move from possible moves.
         row = pos[0]
@@ -201,5 +214,23 @@ class hex_board:
             self.game_over = True
             self.winner = player_ID
 
+    def all_children_boards(self, possible_moves):
+        '''Generate and return all children boards.'''
+        child_list = []
+        for move in possible_moves:
+            child = deepcopy(self)
+            child.make_move(move)
+            child_list.append(child)
+        return child_list
+        
+    def __hash__(self):
+        ''' hash the board '''
+        return hash(str(self.state))
+
+    def __eq__(self, other_board):
+        ''' Eq items should hash the same '''
+        if hash(self) == hash(other_board):
+            return True
+        return False
 
 
