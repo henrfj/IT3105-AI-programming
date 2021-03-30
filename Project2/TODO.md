@@ -4,8 +4,10 @@ Todo list and list of interesting questions from Q&As.
 1. Child_states is redundant?
     - Cant we just use possible_moves list directly to chose a move?
 
-2. If slow, make it so that mcts only uses states, and board-methods take in states instead of using self.state
+2. If slow, make it so that we dont save enteties of the board, but simply play backwards and forwards on one board, and only save tokens.
     - 
+
+3. Store and update the hash - value of state so we dont need to compute it every time
 
 # Q&A 15.03.2021
 

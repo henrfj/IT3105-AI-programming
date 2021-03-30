@@ -1,13 +1,16 @@
 # My own modules
 import hex_board as hb
 import hex_display as hd
-from copy import deepcopy
+import mcts as MC
+import actor as Actor
+import RL_agent as Agent
 
 # Others modules
 import matplotlib.pyplot as plt # Plotting
 import networkx as nx # Network graph
 from matplotlib import animation # Animating network graphs
 import numpy as np # Efficient arrays
+from copy import deepcopy # Deep copies
 
 
 def random_walk_animate(animate=True):
@@ -55,49 +58,52 @@ def random_walk_check_bias(num):
     print("P2:", p2, "\t=>", p2*100/(p1+p2), "% winrate")
 
 def hash_and_compare():
+    dic={}
     board1 = hb.hex_board(10)
     board2 = hb.hex_board(10)
-    # 1
-    if board1 == board2:
-        print("They are equals.")
-
-    # 2
-    dic = {}
-    dic[board1] = 100
+    print("#1: Same")
+    dic[hash(board1)] = 1
+    dic[hash(board2)] = 2
     print(dic)
-    dic[board2] = 50
-    print(dic)
-
-    # 3
-    board3 = hb.hex_board(13)
-    board4 = hb.hex_board(9)
-    l = [board3, board4]
-    if board1 in l:
-        print("This is wrong...")
-    l.append(board1)
-    if board2 in l:
-        print("Board 1 = board 2!")
-
-    # 4
-    board1.make_move((3,3))
-    board1.make_move((2,2))
-    board1.make_move((4,4))
+    print("1:",hash(board1))
+    print("2:",hash(board2))
+    print("#2: 1 deviate")
     board1.make_move((1,1))
-    
-    board2.make_move((4,4))
+    dic[hash(board1)] = 3
+    dic[hash(board2)] = 4
+    print(dic)
+    print("1:",hash(board1))
+    print("2:",hash(board2))
+    print("#3: 2 deviate")
     board2.make_move((2,2))
+    dic[hash(board1)] = 5
+    dic[hash(board2)] = 6
+    print(dic)
+    print("1:",hash(board1))
+    print("2:",hash(board2))
+    print("#4: same")
+    board1.make_move((3,3))
     board2.make_move((3,3))
+    board1.make_move((2,2))
     board2.make_move((1,1))
-
-    if board1 == board2:
-        print("They are still equals after doing some moves, in different order.")
-
-    # 5 Has board 1 changed now? => yes.
-    dic[board1] = 77
+    dic[hash(board1)] = 7
+    dic[hash(board2)] = 8
     print(dic)
-    dic[board2] = 22
-    print(dic)
+    print("1:",hash(board1))
+    print("2:",hash(board2))
 
+    print("\n-----------------------\nPROBLEM")
+    board3 = hb.hex_board(3)
+    board4 = hb.hex_board(3)
+
+    board3.make_move((2,2))
+    board4.make_move((0,0))
+    board4.make_move((0,1))
+    board4.make_move((1,0))
+    print(board3)
+    print(board4)
+    print("Is board3 == board4?", board3==board4)
+  
 def test_max():
     l = [1, 2, 3, 4, 9, 5, 6, 7]
     i = 1
@@ -146,10 +152,90 @@ def test_copy_method():
     else:
         print("deepcopy() makes a new, independent instance.")
 
+def MCTS_single_test():
+    # Setup.
+    k = 6 # board dimensions
+    s = 2 # time in seconds
+    # Instances used.
+    actor = Actor.Random_actor(k)
+    board = hb.hex_board(k)
+    mcts = MC.MCTS(0.1, board, actor)
     
+    # Run simulations, look for result
+    mcts.simulate_timed(s) 
+    print("No. Parents", len(list(mcts.children.keys())))
+    print("N-keys:", len(mcts.N.keys()))
+    print("Q-keys:", len(list(mcts.Q.keys())))
+    print("N_v-keys:", len(mcts.N_v.keys()))
+    print("Max edges:", len(list(mcts.children.keys())) * (k*k)) # 
+    print("Max nodes:", len(list(mcts.children.keys())) * k*k + 1) # +1 is the root
 
-### TESTS
-test_max()
+def hex_board_child_test():
+    k= 11
+    board = hb.hex_board(k)
+    possible_moves = board.possible_moves_pos()
+    l = board.all_children_boards(possible_moves)
+    print("For a "+str(k)+"x"+str(k)+" board, there should be " +str(k*k) +" possible moves, and therefor " +str(k*k) +" children:")
+    print("Length of possible moves:", len(possible_moves))
+    print("No. children generated:", len(l))
+
+def MCTS_simulate_and_move_test(animate=True):
+    ''' Uses statistics from MCTS directly to make moves'''
+    
+    # Setup.
+    k = 6 # board dimensions
+    s = 4 # time of each simulation, in seconds
+    frame_delay = 500
+    figsize = (8,8)
+    # Instances used.
+    actor = Actor.Random_actor(k)
+    board = hb.hex_board(k) # Actual game board
+    mcts = MC.MCTS(0.1, deepcopy(board), actor)
+    display = hd.hex_display(frame_delay, figsize)
+
+    # Animation sequence
+    episode = [board.state]
+
+    # Run simulations
+    mcts.simulate_timed(s) 
+    possible_moves = board.possible_moves_pos()
+
+    while not board.game_over:
+        m = 0
+        best_index = 0
+        for i in range(len(possible_moves)):
+            score = mcts.N_v[(hash(board), possible_moves[i])]
+            if score > m:
+                m = score
+                best_index = i
+        
+        # Apply "best" move
+        best_move = possible_moves[best_index]
+        board.make_move(best_move)
+        episode.append(board.state)
+
+        # Prune MCTS tree so that root = board state
+        mcts.prune_search_tree(board)
+        
+        # Run a new sim
+        mcts.simulate_timed(s)
+        possible_moves = board.possible_moves_pos()
+
+
+    print("The winner of the actual game is player "+str(board.winner)+"!")
+    print("The MCTS simulation tree grew to this size:")
+    print("Parent nodes:", len(mcts.children.keys()))
+    print("Total nodes:", len(mcts.N.keys()), ", out of", len(mcts.children.keys())*k**2,' "possible" nodes.')
+    print("The winning board looked like this:\n",board.state)
+    if animate:
+        display.animate_episode(episode, k)
+
+
+### component TESTS
+MCTS_simulate_and_move_test()
+#MCTS_single_test()
+#hex_board_child_test()
+#test_max()
 #test_copy_method()
 #hash_and_compare()
 #random_walk_animate() 

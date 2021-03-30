@@ -7,12 +7,12 @@ class hex_board:
     Hex board. Game logic. State manager.
     '''
 
-    def __init__(self, k):
+    def __init__(self, k, verbose=False):
         '''Init'''
         self.k = k
         self.initialize_states()
         self.player_turn = 1       # ID 1 (p1) and 2 (p2) for whos turn it is.
-
+        self.verbose = verbose
         # Game over
         self.game_over = False
         self.winner = 0
@@ -53,14 +53,16 @@ class hex_board:
 
     def random_move(self):
         '''Returns a random move (x,y) from current state.'''
-        while 1:
-            i = int(np.random.randint(0, len(self.possible_moves)))
+        indexes=[]
+        for i in range(len(self.possible_moves)):
             if self.possible_moves[i] == 1:
-                break
+                indexes.append(i)
+        j = int(np.random.randint(0,len(indexes)))
+        i = indexes[j]
         col = i%self.k
         row = i//self.k
         return (row, col)
-
+        
     def new_state(self, pos):
         '''Based on current state, and pos of new move, update state.'''
         # Find the new state.
@@ -210,27 +212,41 @@ class hex_board:
         Player ID: {1,2}
         Pos: (row,col)'''
         if self.edge_connections[pos[0]][pos[1]][0] == 1 and self.edge_connections[pos[0]][pos[1]][1] == 1:
-            print("Player",player_ID,"won!")
+            if self.verbose:
+                print("Player",player_ID,"won!")
             self.game_over = True
             self.winner = player_ID
 
     def all_children_boards(self, possible_moves):
-        '''Generate and return all children boards.'''
+        '''Generate and return all children boards in same order as the moves!.'''
         child_list = []
         for move in possible_moves:
             child = deepcopy(self)
             child.make_move(move)
             child_list.append(child)
         return child_list
-        
-    def __hash__(self):
-        ''' hash the board '''
-        return hash(str(self.state))
+    
+    def all_children_IDs(self, possible_moves):
+        '''Generate and return all children_IDs in same order as the moves!.'''
+        child_ID_list = []
+        for move in possible_moves:
+            child = deepcopy(self)
+            child.make_move(move)
+            child_ID_list.append(hash(child))
+        return child_ID_list
 
+    def __hash__(self):
+        ''' *hash* the board '''
+        # Board with same state is the same
+        # TODO: Pre-store hash values, and update them in "make move" to  save time?
+        return hash(np.array2string(self.state))
+    
     def __eq__(self, other_board):
         ''' Eq items should hash the same '''
         if hash(self) == hash(other_board):
             return True
         return False
 
-
+    def __str__(self):
+        '''string representation of board'''
+        return str(self.state)
