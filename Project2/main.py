@@ -3,7 +3,7 @@ import hex_board as hb
 import hex_display as hd
 import mcts as MC
 import actor as Actor
-import RL_agent as Agent
+from RL_agent import Agent
 
 # Others modules
 import matplotlib.pyplot as plt # Plotting
@@ -152,6 +152,15 @@ def test_copy_method():
     else:
         print("deepcopy() makes a new, independent instance.")
 
+def test_flatten():
+    board = hb.hex_board(4)
+    print(board.flatten_state())
+    board.make_move((0,0))
+    board.make_move((1,1))
+    board.make_move((2,2))
+    board.make_move((3,3))
+    print(board.flatten_state())
+
 def MCTS_single_test():
     # Setup.
     k = 6 # board dimensions
@@ -162,7 +171,7 @@ def MCTS_single_test():
     mcts = MC.MCTS(0.1, board, actor)
     
     # Run simulations, look for result
-    mcts.simulate_timed(s) 
+    mcts.simulate_timed(s, progress=0) 
     print("No. Parents", len(list(mcts.children.keys())))
     print("N-keys:", len(mcts.N.keys()))
     print("Q-keys:", len(list(mcts.Q.keys())))
@@ -179,12 +188,12 @@ def hex_board_child_test():
     print("Length of possible moves:", len(possible_moves))
     print("No. children generated:", len(l))
 
-def MCTS_simulate_and_move_test(animate=True):
+def MCTS_one_actual_game_test(animate=True):
     ''' Uses statistics from MCTS directly to make moves'''
     
     # Setup.
     k = 6 # board dimensions
-    s = 4 # time of each simulation, in seconds
+    s = 2 # time of each simulation, in seconds
     frame_delay = 500
     figsize = (8,8)
     # Instances used.
@@ -197,7 +206,7 @@ def MCTS_simulate_and_move_test(animate=True):
     episode = [board.state]
 
     # Run simulations
-    mcts.simulate_timed(s) 
+    mcts.simulate_timed(s, progress=0, verbose=True) 
     possible_moves = board.possible_moves_pos()
 
     while not board.game_over:
@@ -218,7 +227,7 @@ def MCTS_simulate_and_move_test(animate=True):
         mcts.prune_search_tree(board)
         
         # Run a new sim
-        mcts.simulate_timed(s)
+        mcts.simulate_timed(s, progress=0, verbose=True)
         possible_moves = board.possible_moves_pos()
 
 
@@ -230,13 +239,77 @@ def MCTS_simulate_and_move_test(animate=True):
     if animate:
         display.animate_episode(episode, k)
 
+def RL_agent_test():
+    # Params
+    learning_rate = 0.1
+    layers = [5,5,5]
+    k = 3
+    eps = 0.2
+    sim_time = 1
+    RBUF_size = 512
+    mbs = 300
+    
+    # Create the agent
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
+    print("Agent created with a NN actor.")
+    
+    # Train the agents actor
+    agent.run_training_sim(100, 10, verbose=True)
+    print("Agent is trained!")
+    
+    # Test the agent vs a random agent!
+    random = Actor.Random_actor(k)  # p1
+    trained = Agent.actor           # p2
+    board = hb.hex_board(k)         # The board to play on
+    p2_w = 0                        # Keep track of p2 victories
+    games = 100
+    print("============================================")
+    print("============== TIME TO FIGHT! ==============")
+    print("============================================")
+    
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=2:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
 
-### component TESTS
-MCTS_simulate_and_move_test()
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index%k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        print("Round",i+1," was won by player:", board.winner)
+        if board.winner == 2:
+            p2_w += 1
+    
+    print("After",games,"games. The trained player won:",p2_w)
+
+
+### Integrated tests
+RL_agent_test()
+#MCTS_one_actual_game()
+#random_walk_animate() 
+#random_walk_check_bias(1000)
+
+### Component TESTS
 #MCTS_single_test()
 #hex_board_child_test()
 #test_max()
 #test_copy_method()
 #hash_and_compare()
-#random_walk_animate() 
-#random_walk_check_bias(1000)
+
+### Single function tests
+#test_flatten()

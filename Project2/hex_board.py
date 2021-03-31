@@ -10,16 +10,16 @@ class hex_board:
     def __init__(self, k, verbose=False):
         '''Init'''
         self.k = k
-        self.initialize_states()
-        self.player_turn = 1       # ID 1 (p1) and 2 (p2) for whos turn it is.
         self.verbose = verbose
-        # Game over
-        self.game_over = False
-        self.winner = 0
+        # Init / reset function
+        self.initialize_states()
 
     def initialize_states(self):
         '''Initialize all states. Can be used to reset game.'''
         k = self.k
+        
+        # ID 1 (p1) and 2 (p2) for whos turn it is.
+        self.player_turn = 1       
         
         # 2D array. Contains 0s, 1s and 2s. Player 1, 2 and empty.
         self.state = np.zeros((k,k))            
@@ -30,6 +30,10 @@ class hex_board:
         # Contains (x,x) - connection to the two edges. 3D array.
         self.edge_connections = np.zeros((k, k, 2))
         
+        # Final state check.
+        self.game_over = False
+        self.winner = 0
+        
     def flatten_state(self,):
         ''' Flatten state to 1D array. Add player ID tag at beginning.''' 
         flat = np.zeros(self.k**2+1)
@@ -38,7 +42,8 @@ class hex_board:
                 flat[row*self.k+col+1] = self.state[row][col]
         # Add ID tag.
         flat[0] = self.player_turn
-        return flat
+        return flat.reshape((1,len(flat))) # Ready for model inputting.
+        #return flat
 
     def possible_moves_pos(self):
         '''Returns list of all moves possible as (x,y) of placed piece.'''
@@ -49,6 +54,20 @@ class hex_board:
                 col = i%self.k
                 row = i//self.k
                 moves.append((row,col)) # [New_state, last move (row, col)]
+        return moves
+
+    def possible_moves_pos_2(self):
+        '''Returns np.array of all moves possible as (x,y) of placed piece, in correct order.
+        This is used to generate the D later.'''
+        # Contains list of child-states, and pos. of newly placed piece.
+        moves = []
+        for i in range(len(self.possible_moves)):
+            if self.possible_moves[i] == 1: # Spot is free.
+                col = i%self.k
+                row = i//self.k
+                moves.append((row,col)) # [New_state, last move (row, col)]
+            else:
+                moves.append(-1) # Marking the impossible moves as well
         return moves
 
     def random_move(self):

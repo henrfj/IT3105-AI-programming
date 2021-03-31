@@ -12,19 +12,22 @@ class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
     def __init__(self, episolin, root : hb.hex_board, default_policy, exploration_const=1,):
+        # Initialize
+        self.initialize(root)
+        # 
+        self.c = exploration_const              # C in UCT
+        self.epsilon_0 = episolin               # Initial epsilon value
+        #                                       
+        self.default_policy = default_policy    # NN actor
+
+    # Initializes / resets the MCTS
+    def initialize(self, root : hb.hex_board):
         # Node dictionaries ( ͡° ͜ʖ ͡°)
         self.Q = dict()                         # total reward of each node. key: (state_ID, a)
         self.N = dict()                         # total visit count for each node. key: (state_ID)
         self.N_v = dict()                       # total visit counts for each vertex. Key is (state_ID, a)
         self.children = dict()                  # hold children_IDs of each node_ID
-        
-        # 
-        self.c = exploration_const              # C in UCT
-        self.epsilon_0 = episolin                 # Initial epsilon value
-
-        #                                       
-        self.root = root                        # np.array((k,k)), empty
-        self.default_policy = default_policy    # NN actor
+        self.root = deepcopy(root)              # hexboard)
 
     def M_simulations(self, M : int):
         '''run M simulations to expand the MCT and gather statistics'''
@@ -33,20 +36,21 @@ class MCTS:
             epsilon = self.epsilon_0 # TODO: Should decrease e as we progress, use i.
             self.single_simulation(i, epsilon)
 
-    def simulate_timed(self, s : int):
+    def simulate_timed(self, s : int, progress : float, verbose=False):
         ''' Runs simulations until time is out. s is seconds'''
         start_time = time.time()
         current_time = time.time()
         elapsed_time = current_time-start_time
         i = 0
         while elapsed_time < s:
-            epsilon = self.epsilon_0
-            self.single_simulation(i, epsilon) # TODO: Should decrease e as we progress, use i.
+            epsilon = self.epsilon_0 * (1-progress) # Gradual decay from epsilon_0 -> 0, based on progress in *epoch*.
+            self.single_simulation(i, epsilon)      
             i+=1
             current_time = time.time()
             elapsed_time = current_time-start_time
         
-        print("You manged to do",i,"simulations in",s,"seconds.")
+        if verbose==True:
+            print("You manged to do",i,"simulations in",s,"seconds.")
 
     def single_simulation(self, i, epsilon):
         '''Run a single simulation from root-->leaf-->terminal'''
@@ -61,15 +65,15 @@ class MCTS:
 
         # First time setup: when the search tree consists of only an unexplored root.
         if self.is_leaf(hash(node)): #Root is a leaf, only happens once.
-            print("First time setup")
+            print('A "Fresh" MCTS is created: empty root.')
             self.N[hash(node)] = 1 # initiate N
 
-        # Tree search algorithms, p1 and p2
+        # Tree search algorithms, p1 and p2. Based on the "MCTS for GO" - paper.
         def UCT_1(action):
-            '''Tree search for p1, done ntil we hit a leaf of the tree.'''
+            '''Tree search for p1, done until we hit a leaf of the tree.'''
             return self.Q[(hash(node), action)] + self.c * np.sqrt(np.log(self.N[hash(node)]) / 1 + self.N_v[(hash(node), action)])
         def UCT_2(action):
-            '''Tree search for p2, done ntil we hit a leaf of the tree.'''
+            '''Tree search for p2, done until we hit a leaf of the tree.'''
             return self.Q[(hash(node), action)] - self.c * np.sqrt(np.log(self.N[hash(node)]) / 1 + self.N_v[(hash(node), action)])
             
         # iteration variables
@@ -77,7 +81,7 @@ class MCTS:
 
         # Tree search
         while (not self.is_leaf(hash(node))): # Not a leaf
-            # In case the game is already over, before rollout
+            # In case the game is already over, initiate rollout
             if node.game_over==True:
                 if node.winner == 1:
                     z = 1
@@ -118,10 +122,10 @@ class MCTS:
         
         # 2 Rollout, using default algorithm
         while node.game_over == False:
-            move_distribution = self.default_policy.move_distribution(node.flatten_state()) # k*k 1D list of probabilities.
+            move_distribution = self.default_policy.move_distribution(node.flatten_state()) # k*k+1 1D list of probabilities.
             legal_moves =  np.multiply(move_distribution, node.possible_moves) # Remove impossible moves.
             norm_moves = legal_moves / np.sum(legal_moves)
-            
+
             # Epsilon greedy choice TODO: choose based on distribution itself of course!
             z = np.random.uniform(0,1)
             if z > epsilon: # chose highest number
@@ -192,7 +196,6 @@ class MCTS:
             return True # All got updated
 
     def prune_search_tree(self, new_root):
-
         ''' Prunes search tree by selecting new root '''
         self.root = deepcopy(new_root)
       
