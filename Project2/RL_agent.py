@@ -34,7 +34,7 @@ class Agent:
         feature_BUF = np.empty(self.RBUF_size, dtype=np.ndarray) # For input states (with ID)
         target_BUF = np.empty(self.RBUF_size, dtype=np.ndarray)  # For target distributions, D
         q = 0 # queue index, wrapps around.
-        
+        time_to_train = False
 
         # 3
         # Initialize actor, already done - suppose each agent only has one actor: 1-1
@@ -78,8 +78,13 @@ class Agent:
                 
             # e
             # Train ANET on *random* minibatch.
-            features, targets = self.gen_random_minibatch(feature_BUF, target_BUF, self.mbs)
-            self.actor.train(features, targets, self.mbs)
+            if q == self.RBUF_size: 
+                time_to_train = True
+            
+            if time_to_train: 
+                print("Now its training!")
+                features, targets = self.gen_random_minibatch(feature_BUF, target_BUF, self.mbs)
+                self.actor.train(features, targets, self.mbs)
             
             # f TODO
             # Based on interval, save ANET to use for tournament later

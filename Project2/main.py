@@ -258,8 +258,8 @@ def RL_agent_test():
     print("Agent is trained!")
     
     # Test the agent vs a random agent!
-    random = Actor.Random_actor(k)  # p1
-    trained = Agent.actor           # p2
+    random = Actor.Random_actor(k)  # p1, a new random actor
+    trained = agent.actor           # p2
     board = hb.hex_board(k)         # The board to play on
     p2_w = 0                        # Keep track of p2 victories
     games = 100

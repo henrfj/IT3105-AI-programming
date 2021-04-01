@@ -76,7 +76,10 @@ class hex_board:
         for i in range(len(self.possible_moves)):
             if self.possible_moves[i] == 1:
                 indexes.append(i)
-        j = int(np.random.randint(0,len(indexes)))
+        try:
+            j = int(np.random.randint(0,len(indexes)))
+        except:
+            raise Exception("This is the possible moves rn:", self.possible_moves)
         i = indexes[j]
         col = i%self.k
         row = i//self.k

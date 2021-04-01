@@ -82,12 +82,7 @@ class MCTS:
         # Tree search
         while (not self.is_leaf(hash(node))): # Not a leaf
             # In case the game is already over, initiate rollout
-            if node.game_over==True:
-                if node.winner == 1:
-                    z = 1
-                elif node.winner == 2:
-                    z = -1
-                self.backpropagation(path, actions, z)
+            if self.hit_the_bottom(node, path, actions):
                 return
             # Use UCT to choose action
             if node.player_turn==1:
@@ -107,6 +102,9 @@ class MCTS:
             # Update iteration variables
             possible_moves = node.possible_moves_pos()
 
+        # The Leaf can be the final state.
+        if self.hit_the_bottom(node, path, actions):
+                return
         # At leaf, expand all* children and add them to the tree. * possibly none 
         children_IDs = node.all_children_IDs(possible_moves) # returned in node format (boards)
         self.children[hash(node)] = children_IDs
@@ -197,8 +195,10 @@ class MCTS:
 
     def prune_search_tree(self, new_root):
         ''' Prunes search tree by selecting new root '''
+        # TODO: remove all unused data from dictinaries. This can be done using children and iterating.
+        # Is it worth it?
         self.root = deepcopy(new_root)
-      
+     
     def is_leaf(self, node_ID):
         ''' Checks if a node is a leaf node '''
         try: # Check for leaf
@@ -206,3 +206,13 @@ class MCTS:
             return False
         except:
             return True 
+
+    def hit_the_bottom(self, node, path, actions):
+        if node.game_over==True:
+            if node.winner == 1:
+                z = 1
+            elif node.winner == 2:
+                z = -1
+            self.backpropagation(path, actions, z)
+            return True
+        return False
