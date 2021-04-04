@@ -1,7 +1,8 @@
 # TODO list
 Todo list and list of interesting questions from Q&As.
 
-1. **Remove redundant** functions i hexboard -- cleanup.
+1. **Ikke ekspand alle barn, bare første nye node man finner.**.
+- Trenger vi da egentlig children? Kan vel bare generere barn.
 
 2. **If slow**, make it so that we dont save enteties of the board, but simply play backwards and forwards on one board, and only save tokens.
     => DONE
@@ -13,9 +14,15 @@ Todo list and list of interesting questions from Q&As.
 
 6. *Test ***MCTS*** by itself*. Some worrying results were seen, where a single path was "locked" onto.
 
-7. Right now D has zero values for all impossible moves, which is what we trains towards. When we in mcts use NN to generate moves, we still have to dot the output with legal moves.
+7. Right now **D** has zero values for all impossible moves, which is what we trains towards. When we in mcts use NN to generate moves, we still have to dot the output with legal moves.
 
-## Q&A 15.03.2021 of interest.
+8. Mulige problem: Trener flere ganger på den gamle dataen, overfitting.
+-  Bruk validation data.
+-  Mindre buffer size.
+
+9. D og flat er formattert (1,k^2), men brukes kanskje som om de var (k^2, ) i mcts og rl agent.
+
+## Q&As of interest.
 
 1. Actor stochastic?
 - In training yes.

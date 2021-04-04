@@ -199,7 +199,7 @@ def MCTS_one_actual_game_test(animate=True):
     # Instances used.
     actor = Actor.Random_actor(k)
     board = hb.hex_board(k) # Actual game board
-    mcts = MC.MCTS(0.1, deepcopy(board), actor)
+    mcts = MC.MCTS(0.1, board, actor)
     display = hd.hex_display(frame_delay, figsize)
 
     # Animation sequence
@@ -225,10 +225,10 @@ def MCTS_one_actual_game_test(animate=True):
 
         # Prune MCTS tree so that root = board state
         mcts.prune_search_tree(board)
-        
-        # Run a new sim
-        mcts.simulate_timed(s, progress=0, verbose=True)
-        possible_moves = board.possible_moves_pos()
+        if not board.game_over:
+            # Run a new sim
+            mcts.simulate_timed(s, progress=0, verbose=True)
+            possible_moves = board.possible_moves_pos()
 
 
     print("The winner of the actual game is player "+str(board.winner)+"!")
@@ -241,28 +241,28 @@ def MCTS_one_actual_game_test(animate=True):
 
 def RL_agent_test():
     # Params
-    learning_rate = 0.1
-    layers = [5,5,5]
+    learning_rate = 0.2 
     k = 3
-    eps = 0.2
-    sim_time = 1
-    RBUF_size = 512
-    mbs = 300
+    layers = [10,10] 
+    eps = 0.4
+    sim_time = 2 # 4
+    RBUF_size = 250 # 64
+    mbs = 120 # 32
     
     # Create the agent
     agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
     print("Agent created with a NN actor.")
     
     # Train the agents actor
-    agent.run_training_sim(100, 10, verbose=True)
-    print("Agent is trained!")
+    agent.run_training_sim(100, 10, verbose=True) # 100
+    print("Agent is trained!") 
     
     # Test the agent vs a random agent!
     random = Actor.Random_actor(k)  # p1, a new random actor
     trained = agent.actor           # p2
     board = hb.hex_board(k)         # The board to play on
     p2_w = 0                        # Keep track of p2 victories
-    games = 100
+    games = 1000
     print("============================================")
     print("============== TIME TO FIGHT! ==============")
     print("============================================")
@@ -285,22 +285,34 @@ def RL_agent_test():
 
             # Completely greedy move.
             index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
-            row = index%k
+            row = index//k
             col = index%k
 
             # Make the move
             board.make_move((row, col))
 
-        print("Round",i+1," was won by player:", board.winner)
+        #print("Round",i+1," was won by player:", board.winner)
         if board.winner == 2:
             p2_w += 1
     
     print("After",games,"games. The trained player won:",p2_w)
 
+def test_possible_moves():
+    board = hb.hex_board(6)
+    moves = []
+    while not board.game_over:
+        print(board.possible_moves_pos())
+        move = board.random_move()
+        print("Chose this:", move)
+        moves.append(move)
+        board.make_move(move)
+    print("Winner:", board.winner)
+    print(board)
 
+#test_possible_moves()
 ### Integrated tests
 RL_agent_test()
-#MCTS_one_actual_game()
+#MCTS_one_actual_game_test()
 #random_walk_animate() 
 #random_walk_check_bias(1000)
 

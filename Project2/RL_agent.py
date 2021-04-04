@@ -31,10 +31,10 @@ class Agent:
         
         # 2
         ## Initialize replay buffer, RBUF ()
-        feature_BUF = np.empty(self.RBUF_size, dtype=np.ndarray) # For input states (with ID)
-        target_BUF = np.empty(self.RBUF_size, dtype=np.ndarray)  # For target distributions, D
+        feature_BUF = np.empty((self.RBUF_size, 1, (self.k**2)+1), dtype=float) # For input states (with ID)
+        target_BUF = np.empty((self.RBUF_size, 1, (self.k**2)), dtype=float)  # For target distributions, D
         q = 0 # queue index, wrapps around.
-        time_to_train = False
+        wrap_around = False
 
         # 3
         # Initialize actor, already done - suppose each agent only has one actor: 1-1
@@ -51,7 +51,7 @@ class Agent:
 
             # d
             # Run one actual game
-            # TODO! Whit this setup, we never save the final moves data in the replay buffer.
+            # TODO! With this setup, we never save the final moves data in the replay buffer.
             while not self.board.game_over:
                 # Prune MCTS tree so that root = board state. Does nothing the first move.
                 self.mcts.prune_search_tree(self.board)
@@ -61,14 +61,14 @@ class Agent:
                 all_moves = self.board.possible_moves_pos_2()           
                 
                 # Find best move - by visit counts
+                # D = self.get_the_D(hash(self.board), all_moves, self.mcts.N_v)
                 D = self.get_the_D(hash(self.board), all_moves, self.mcts.N_v) # np.array of shape (1,D), ready for model training.
                 best_move = all_moves[np.argmax(D[0])] # The highest index of D, is the best move.
-                if best_move == -1:
-                    raise Exception("Choosing an illegal move as best move ( ͡° ͜ʖ ͡°)")
 
                 # Store (s,D) in replay buffer.
                 if q == self.RBUF_size: # Wraparound. FIFO behaviour, overwrites the oldest elements.
                     q = 0
+                    wrap_around = True
                 feature_BUF[q] = self.board.flatten_state()
                 target_BUF[q] = D
                 q += 1
@@ -78,14 +78,19 @@ class Agent:
                 
             # e
             # Train ANET on *random* minibatch.
-            if q == self.RBUF_size: 
-                time_to_train = True
+            # Before Buffer is full, use the ones we got.
+            print("Shape of feature_BUF:", feature_BUF.shape, "Elements look like this:", feature_BUF[0].shape)
+            print("Shape of target_BUF:", target_BUF.shape, "Elements look like this:", target_BUF[0].shape)
             
-            if time_to_train: 
-                print("Now its training!")
+            if wrap_around: 
+                print("RBUF is full. Picking random minibatch.")
                 features, targets = self.gen_random_minibatch(feature_BUF, target_BUF, self.mbs)
-                self.actor.train(features, targets, self.mbs)
-            
+                
+            else: 
+                print("RBUF still not full. Pick from what we got.")
+                features, targets = self.gen_random_minibatch(feature_BUF[:q], target_BUF[:q], min([self.mbs, q]))
+
+            self.actor.train(features, targets, min([self.mbs, q]))
             # f TODO
             # Based on interval, save ANET to use for tournament later
             # if i%interval == 0: save

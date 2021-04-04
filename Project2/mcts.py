@@ -27,6 +27,7 @@ class MCTS:
         self.N = dict()                         # total visit count for each node. key: (state_ID)
         self.N_v = dict()                       # total visit counts for each vertex. Key is (state_ID, a)
         self.children = dict()                  # hold children_IDs of each node_ID
+        self.Eval = dict()
         self.root = deepcopy(root)              # hexboard)
 
     def M_simulations(self, M : int):
@@ -64,17 +65,17 @@ class MCTS:
         actions = []                # Actions taken along the way.
 
         # First time setup: when the search tree consists of only an unexplored root.
-        if self.is_leaf(hash(node)): #Root is a leaf, only happens once.
+        if self.is_leaf(hash(node)): #Root is a leaf, should happen once per actual game.
             print('A "Fresh" MCTS is created: empty root.')
             self.N[hash(node)] = 1 # initiate N
 
         # Tree search algorithms, p1 and p2. Based on the "MCTS for GO" - paper.
         def UCT_1(action):
             '''Tree search for p1, done until we hit a leaf of the tree.'''
-            return self.Q[(hash(node), action)] + self.c * np.sqrt(np.log(self.N[hash(node)]) / 1 + self.N_v[(hash(node), action)])
+            return self.Q[(hash(node), action)] + self.c * np.sqrt(np.log(self.N[hash(node)]) / (self.N_v[(hash(node), action)]))
         def UCT_2(action):
             '''Tree search for p2, done until we hit a leaf of the tree.'''
-            return self.Q[(hash(node), action)] - self.c * np.sqrt(np.log(self.N[hash(node)]) / 1 + self.N_v[(hash(node), action)])
+            return self.Q[(hash(node), action)] - self.c * np.sqrt(np.log(self.N[hash(node)]) / (self.N_v[(hash(node), action)]))
             
         # iteration variables
         possible_moves = node.possible_moves_pos()
@@ -110,24 +111,19 @@ class MCTS:
         self.children[hash(node)] = children_IDs
         self.add_to_tree(hash(node), possible_moves, children_IDs) # First time setup
         
-        ##### Rollout on one random child
-        # 1 Choose child randomly
-        move = node.random_move()
-        actions.append(move)
-
-        node.make_move(move)
-        path.append(hash(node))
-        
+        ##### Rollout using default policy
+        # 1
         # 2 Rollout, using default algorithm
         while node.game_over == False:
             move_distribution = self.default_policy.move_distribution(node.flatten_state()) # k*k+1 1D list of probabilities.
             legal_moves =  np.multiply(move_distribution, node.possible_moves) # Remove impossible moves.
             norm_moves = legal_moves / np.sum(legal_moves)
+            #print("The normalized moves:", norm_moves)
 
             # Epsilon greedy choice TODO: choose based on distribution itself of course!
             z = np.random.uniform(0,1)
             if z > epsilon: # chose highest number
-                move_index = np.argmax(norm_moves)              # this is 1D move
+                move_index = np.argmax(norm_moves)              # this is 1D move #TODO: norm_moves i (1, x) sized
                 move = (move_index//node.k, move_index%node.k)  # (row, col) of move
             else:
                 move = node.random_move()
@@ -154,6 +150,7 @@ class MCTS:
         #print("PATH:", path)
 
     def backpropagation(self, path, actions, z):
+        #print("The path:", path)
         # TODO: might want to backpropagate for the rollout nodes as well.
         for i in range(0, len(actions)):
             # State-actions pairs, node/move.
@@ -168,7 +165,8 @@ class MCTS:
             # Update N, N_v, Q
             self.N[node_ID] += 1
             self.N_v[(node_ID, move)] += 1
-            self.Q[(node_ID, move)] += (z - self.Q[(node_ID, move)]) / self.N_v[(node_ID,move)]
+            self.Eval[(node_ID, move)] += z
+            self.Q[(node_ID, move)] += self.Eval[(node_ID, move)] / self.N_v[(node_ID,move)]
         # Update N for leaf node.
         node_ID = path[-1] # The final node
         self.N[node_ID] += 1
@@ -182,14 +180,19 @@ class MCTS:
                 k=self.N_v[(parent_ID, move_list[i])]
             except:
                 self.N_v[(parent_ID, move_list[i])] = 1
-            try:
-                k=self.Q[(parent_ID, move_list[i])]
-            except:
-                self.Q[(parent_ID, move_list[i])] = rand[i]
             try: 
                 k=self.N[children_IDs[i]]
             except:
-                 self.N[children_IDs[i]] = 1
+                self.N[children_IDs[i]] = 1
+            try:
+                k=self.Eval[(parent_ID, move_list[i])]
+            except:
+                self.Eval[(parent_ID, move_list[i])] = rand[i]
+            try:
+                k=self.Q[(parent_ID, move_list[i])]
+            except:
+                self.Q[(parent_ID, move_list[i])] = self.Eval[(parent_ID, move_list[i])] / self.N_v[(parent_ID, move_list[i])]
+            
         if k==-1:
             return True # All got updated
 

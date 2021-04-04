@@ -53,14 +53,19 @@ class Actor:
 
     def move_distribution(self, flat_state):
         '''Return the move distribution, numpy array'''
-        return self.model.predict(flat_state)[0]
+        prediction = self.model.predict(flat_state)[0]
+        #print("The prediction:", prediction)
+        return prediction
 
     def train(self, inputs, targets, mbs):
         '''Fit the model based on a random minibatch taken from the replay buffer. Inputs is a flattened board state with player ID,
             while targets is the D - generated distribution.'''
-        print(inputs)
-        print(targets)
-        self.model.fit(inputs, targets, epochs=1, batch_size=mbs)
+        #print("INPUT dimensions:", inputs.shape)
+        #print("TARGETS dimensions:", targets.shape)
+        #self.model.fit(inputs, targets, epochs=1, batch_size=mbs)
+        for i in range(len(inputs)):
+            self.model.fit(inputs[i], targets[i], epochs=1, batch_size=1)
+
 
 class Random_actor:
     '''Acts randomly'''
