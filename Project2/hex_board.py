@@ -42,8 +42,8 @@ class hex_board:
                 flat[row*self.k+col+1] = self.state[row][col]
         # Add ID tag.
         flat[0] = self.player_turn
-        return flat.reshape((1,len(flat))) # Ready for model inputting.
-        #return flat
+        #return flat.reshape((1,len(flat))) # Ready for model inputting.
+        return flat
 
     def possible_moves_pos(self):
         '''Returns list of all moves possible as (x,y) of placed piece.'''
@@ -67,7 +67,7 @@ class hex_board:
                 row = i//self.k
                 moves.append((row,col)) # [New_state, last move (row, col)]
             else:
-                moves.append(-1) # Marking the impossible moves as well
+                moves.append(-1) # Marking the pos of impossible moves as well
         return moves
 
     def random_move(self):

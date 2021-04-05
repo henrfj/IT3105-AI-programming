@@ -12,6 +12,83 @@ from matplotlib import animation # Animating network graphs
 import numpy as np # Efficient arrays
 from copy import deepcopy # Deep copies
 
+#########################################
+############### NEW TESTS ###############
+#########################################
+
+def new_MCTS_single_sims():
+    board = hb.hex_board(6)
+    actor = Actor.Random_actor(6)
+    mcts = MC.BOOK_MCTS(0.2, board, actor, 1)
+    print("Running 10 single sims:")
+    for i in range(1000):
+        mcts.single_simulation(i, 0.4)
+    print("Number of nodes in the tree:", len(mcts.N.keys()))
+    print(" Standing on root, Q values and N_v values:")
+    legal = board.possible_moves_pos()
+    print("Q:", end="  ")
+    for a in legal:
+        print(mcts.Q[(hash(board), a)], end=", ")
+    print("N_v:", end="  ")
+    for a in legal:
+        print(mcts.N_v[(hash(board), a)], end=", ")
+    #print("Running 1000 sims, and looking for any updates.")
+    #for i in range(1000):
+    #    mcts.single_simulation(i, 0.4)
+    #print("Number of nodes in the tree:", len(mcts.N.keys()))
+    #print(" Standing on root, Q values and N_v values:")
+    #legal = board.possible_moves_pos()
+    #print("Q:", end="  ")
+    #for a in legal:
+    #    print(mcts.Q[(hash(board), a)], end=", ")
+    #print("N_v:", end="  ")
+    #for a in legal:
+    #    print(mcts.N_v[(hash(board), a)], end=", ")
+
+def new_MCTS_one_actual_game():
+    # Setup.
+    k = 6 # board dimensions
+    s = 4 # time of each simulation, in seconds
+    frame_delay = 500
+    figsize = (8,8)
+    # Instances used.
+    actor = Actor.Random_actor(k)
+    board = hb.hex_board(k) # Actual game board
+    mcts = MC.BOOK_MCTS(0.1, board, actor)
+    display = hd.hex_display(frame_delay, figsize)
+
+    # Animation sequence
+    episode = [board.state]
+
+    # Run simulations
+    mcts.simulate_timed(s, progress=0, verbose=True) 
+    possible_moves = board.possible_moves_pos()
+
+    while not board.game_over:
+        m = 0
+        best_index = 0
+        for i in range(len(possible_moves)):
+            score = mcts.N_v[(hash(board), possible_moves[i])]
+            if score > m:
+                m = score
+                best_index = i
+        
+        # Apply "best" move
+        best_move = possible_moves[best_index]
+        board.make_move(best_move)
+        episode.append(board.state)
+
+        # Prune MCTS tree so that root = board state
+        mcts.prune_search_tree(board)
+        if not board.game_over:
+            # Run a new sim
+            mcts.simulate_timed(s, progress=0, verbose=True)
+            possible_moves = board.possible_moves_pos()
+
+
+#########################################
+############### OLD TESTS ###############
+#########################################
 
 def random_walk_animate(animate=True):
     ''' Animate random walk to test board logic and displat'''
@@ -309,9 +386,12 @@ def test_possible_moves():
     print("Winner:", board.winner)
     print(board)
 
-#test_possible_moves()
+# Fresh
+#new_MCTS_single_sims()
+new_MCTS_one_actual_game()
+
 ### Integrated tests
-RL_agent_test()
+#RL_agent_test()
 #MCTS_one_actual_game_test()
 #random_walk_animate() 
 #random_walk_check_bias(1000)
@@ -325,3 +405,4 @@ RL_agent_test()
 
 ### Single function tests
 #test_flatten()
+#test_possible_moves()

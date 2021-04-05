@@ -35,7 +35,7 @@ class Actor:
         # A number of hidden layers
         for i in range(self.n_layers):
             # Adds dense layers of different dimensions.
-            model.add(ker.layers.Dense(self.layer_dimensions[i], activation='tanh'))
+            model.add(ker.layers.Dense(self.layer_dimensions[i], activation='relu'))
         
         # Output layer.
         # Size is input-1: as we don't pass on player ID.
@@ -43,7 +43,7 @@ class Actor:
 
         # Compiling the model.
         model.compile(optimizer=ker.optimizers.SGD(learning_rate=(self.alpha)), loss=ker.losses.KLDivergence(), metrics=[tf.keras.metrics.KLDivergence()])
-        model.summary()
+        #model.summary()
         
         # Save the model structure as a png.
         ker.utils.plot_model(model, "Current_model.png", show_shapes=True)
@@ -53,7 +53,7 @@ class Actor:
 
     def move_distribution(self, flat_state):
         '''Return the move distribution, numpy array'''
-        prediction = self.model.predict(flat_state)[0]
+        prediction = self.model.predict(flat_state.reshape((1,len(flat_state))))[0]
         #print("The prediction:", prediction)
         return prediction
 
@@ -62,10 +62,8 @@ class Actor:
             while targets is the D - generated distribution.'''
         #print("INPUT dimensions:", inputs.shape)
         #print("TARGETS dimensions:", targets.shape)
-        #self.model.fit(inputs, targets, epochs=1, batch_size=mbs)
-        for i in range(len(inputs)):
-            self.model.fit(inputs[i], targets[i], epochs=1, batch_size=1)
-
+        self.model.fit(inputs, targets, epochs=1, batch_size=len(inputs)) # send all inputs and targets in one batch.
+        
 
 class Random_actor:
     '''Acts randomly'''

@@ -1,8 +1,8 @@
 # TODO list
 Todo list and list of interesting questions from Q&As.
 
-1. **Ikke ekspand alle barn, bare første nye node man finner.**.
-- Trenger vi da egentlig children? Kan vel bare generere barn.
+1. **Kan vurdere å bruke -1, 0, 1** i board, og playerID -1 og 1. Akkurat nå jobber vi bare med positive tall.
+- Tanh tar høyde for negative verdier. Vi trenger kanskje bare ReLU akkurat nå som vi ikke ønsker negative verdier i input eller output.
 
 2. **If slow**, make it so that we dont save enteties of the board, but simply play backwards and forwards on one board, and only save tokens.
     => DONE
