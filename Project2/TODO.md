@@ -1,6 +1,8 @@
 # TODO list
 Todo list and list of interesting questions from Q&As.
 
+Ask studass: just dosnt seem to get any smarter... Go through RL algorithm
+
 1. **Kan vurdere å bruke -1, 0, 1** i board, og playerID -1 og 1. Akkurat nå jobber vi bare med positive tall.
 - Tanh tar høyde for negative verdier. Vi trenger kanskje bare ReLU akkurat nå som vi ikke ønsker negative verdier i input eller output.
 

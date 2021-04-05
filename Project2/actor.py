@@ -62,7 +62,7 @@ class Actor:
             while targets is the D - generated distribution.'''
         #print("INPUT dimensions:", inputs.shape)
         #print("TARGETS dimensions:", targets.shape)
-        self.model.fit(inputs, targets, epochs=1, batch_size=len(inputs)) # send all inputs and targets in one batch.
+        self.model.fit(inputs, targets, epochs=5, batch_size=len(inputs)) # send all inputs and targets in one batch.
         
 
 class Random_actor:

@@ -85,6 +85,65 @@ def new_MCTS_one_actual_game():
             mcts.simulate_timed(s, progress=0, verbose=True)
             possible_moves = board.possible_moves_pos()
 
+def RL_agent_test_2():
+    # Params
+    learning_rate = 0.15 
+    k = 3
+    layers = [10, 10, 10] 
+    eps = 0.4
+    sim_time = 5 # 4
+    RBUF_size = 64 # 64
+    mbs = 32 # 32
+    epoch = 100
+    
+    # Create the agent
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
+    print("Agent created with a NN actor.")
+    
+    # Train the agents actor
+    agent.run_training_sim(epoch, 10, verbose=True) # 100
+    print("Agent is trained!") 
+    
+    # Test the agent vs a random agent!
+    random = Actor.Random_actor(k)  # p1, a new random actor
+    trained = agent.actor           # p2
+    board = hb.hex_board(k)         # The board to play on
+    p2_w = 0                        # Keep track of p2 victories
+    games = 1000
+    print("============================================")
+    print("============== TIME TO FIGHT! ==============")
+    print("============================================")
+    
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=2:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
+
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == 2:
+            p2_w += 1
+    
+    print("After",games,"games. The trained player won:",p2_w)
+
 
 #########################################
 ############### OLD TESTS ###############
@@ -388,7 +447,9 @@ def test_possible_moves():
 
 # Fresh
 #new_MCTS_single_sims()
-new_MCTS_one_actual_game()
+#new_MCTS_one_actual_game()
+RL_agent_test_2()
+
 
 ### Integrated tests
 #RL_agent_test()
