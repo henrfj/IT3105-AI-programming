@@ -101,6 +101,9 @@ class hex_board:
         row = pos[0]
         col = pos[1]
         if self.possible_moves[row*self.k + col] != 1:
+            print("Possible/legal moves:", self.possible_moves)
+            print("Move to be executed:", pos)
+            print("Current board:", self.state)
             raise Exception("Trying to make illegal move!") 
         else:
             self.possible_moves[row*self.k + col] = 0 

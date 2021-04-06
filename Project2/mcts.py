@@ -25,7 +25,6 @@ class BOOK_MCTS:
         self.Q = dict()                         # total reward of each node. key: (state_ID, a)
         self.N = dict()                         # total visit count for each node. key: (state_ID)
         self.N_v = dict()                       # total visit counts for each vertex. Key is (state_ID, a)
-        
         self.root = deepcopy(root)              # hexboard)
     # Run single simulations for a time, building the tree.
     def simulate_timed(self, s : int, progress : float, verbose=False):
@@ -114,15 +113,20 @@ class BOOK_MCTS:
         '''Uses default algorithm to chose a move from node'''
         # Epsilon greedy choice TODO: choose based on distribution itself of course! np.random.choice
         z = np.random.uniform(0,1)
-        if z > epsilon: # chose highest number
+        if z > epsilon:     # Chose highest number, greedy.
             # Get and normalize moves from the default policy.
             move_distribution = self.default_policy.move_distribution(node.flatten_state()) 
             legal_moves =  np.multiply(move_distribution, node.possible_moves) # Remove impossible moves.
+            # Problem: If all legal moves are picked with 0% chance from the move-distribution => zero array.
+            # This happens if the NN is very confident it doesnt want to pick that action.
+            if np.sum(legal_moves) == 0:
+                return node.random_move() # Odd case, just return random.
+            # normalize moves
             norm_moves = legal_moves / np.sum(legal_moves)
-            # Pick best move, greedy.
+            # Pick best move, greedily.
             move_index = np.argmax(norm_moves)              # 
             move = (move_index//node.k, move_index%node.k)  # 
-        else:
+        else:               # Choose random move.
             move = node.random_move()
         
         return move

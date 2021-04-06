@@ -15,23 +15,24 @@ from copy import deepcopy # Deep copies
 #########################################
 ############### NEW TESTS ###############
 #########################################
-
+#
 def new_MCTS_single_sims():
-    board = hb.hex_board(6)
-    actor = Actor.Random_actor(6)
+    k = 3
+    board = hb.hex_board(k)
+    actor = Actor.Random_actor(k)
     mcts = MC.BOOK_MCTS(0.2, board, actor, 1)
-    print("Running 10 single sims:")
-    for i in range(1000):
+    print("Running 1 single sims:")
+    for i in range(1):
         mcts.single_simulation(i, 0.4)
-    print("Number of nodes in the tree:", len(mcts.N.keys()))
-    print(" Standing on root, Q values and N_v values:")
-    legal = board.possible_moves_pos()
-    print("Q:", end="  ")
-    for a in legal:
-        print(mcts.Q[(hash(board), a)], end=", ")
-    print("N_v:", end="  ")
-    for a in legal:
-        print(mcts.N_v[(hash(board), a)], end=", ")
+    #print("Number of nodes in the tree:", len(mcts.N.keys()))
+    #print(" Standing on root, Q values and N_v values:")
+    #legal = board.possible_moves_pos()
+    #print("Q:", end="  ")
+    #for a in legal:
+    #    print(mcts.Q[(hash(board), a)], end=", ")
+    #print("N_v:", end="  ")
+    #for a in legal:
+    #    print(mcts.N_v[(hash(board), a)], end=", ")
     #print("Running 1000 sims, and looking for any updates.")
     #for i in range(1000):
     #    mcts.single_simulation(i, 0.4)
@@ -44,7 +45,7 @@ def new_MCTS_single_sims():
     #print("N_v:", end="  ")
     #for a in legal:
     #    print(mcts.N_v[(hash(board), a)], end=", ")
-
+# 
 def new_MCTS_one_actual_game():
     # Setup.
     k = 6 # board dimensions
@@ -84,46 +85,134 @@ def new_MCTS_one_actual_game():
             # Run a new sim
             mcts.simulate_timed(s, progress=0, verbose=True)
             possible_moves = board.possible_moves_pos()
+# Can my MCTS approximate a optimal strategy after a given number of simulations?
+def MCTS_optimality_test(player_ID):
+    # Setup.
+    k = 6 # board dimensions.
+    s = 4 # time of each simulation, in seconds.
+    games = 20 # Games played between the two.
+    # Instances used.
+    actor = Actor.Random_actor(k)
+    board = hb.hex_board(k) # Actual game board
+    mcts = MC.BOOK_MCTS(0.1, board, actor)
+    # Winner counter
+    mc_player_ws = 0
+    # Run the games
+    for i in range(games):
+        print("========================\nGame number:", i,", Player",player_ID,"has won:",mc_player_ws,"\n========================")
+        # Reset mcts, all nodes removed.
+        board.initialize_states()
+        mcts.initialize(board)
+        # Run the game
+        while not board.game_over:
+            # Run simulations, for both turns.
+            mcts.simulate_timed(s, progress=0, verbose=True) # run hundreds of sims
+            possible_moves = board.possible_moves_pos()
+            # player player_ID
+            if board.player_turn==player_ID:
+                m = 0
+                best_index = 0
+                for i in range(len(possible_moves)):
+                    score = mcts.N_v[(hash(board), possible_moves[i])]
+                    if score > m:
+                        m = score
+                        best_index = i
+                
+                # Apply "best" move
+                best_move = possible_moves[best_index]
+            else: # Other player
+                best_move = board.random_move()
 
+
+            board.make_move(best_move)
+            # Prune MCTS tree so that root = board state
+            mcts.prune_search_tree(board)
+        
+        if board.winner == player_ID:
+            mc_player_ws += 1
+    print("After running", games, "games, player 1 won", mc_player_ws)
+# Assume MCTS optimal. See if using the D to pick moves is also optimal strategy.
+def Test_the_D(player_ID):
+    # Setup.
+    k = 3 # board dimensions.
+    s = 2 # time of each simulation, in seconds.
+    games = 100 # Games played between the two.
+    # Instances used.
+    actor = Actor.Random_actor(k)
+    board = hb.hex_board(k) # Actual game board
+    mcts = MC.BOOK_MCTS(0.1, board, actor)
+    agent = Agent(0.2, [], k, 0.2, 2, 512, 200) # Just used to test the D
+    # Winner counter
+    mc_player_ws = 0
+    # Run the games
+    for i in range(games):
+        print("========================\nGame number:", i,", Player",player_ID,"has won:",mc_player_ws,"\n========================")
+        # Reset mcts, all nodes removed.
+        board.initialize_states()
+        mcts.initialize(board)
+        # Run the game
+        while not board.game_over:
+            # Run simulations, for both turns.
+            mcts.simulate_timed(s, progress=0, verbose=True) # run hundreds of sims
+            # player player_ID
+            if board.player_turn==player_ID:
+                all_moves = board.possible_moves_pos_2()           
+                # Find best move - by visit counts
+                D = agent.get_the_D(hash(board), all_moves, mcts.N_v) # normalized visit counts.
+                best_move = all_moves[np.argmax(D)] # The highest index of D, is the best move.
+
+            else: # Other player
+                best_move = board.random_move()
+
+
+            board.make_move(best_move)
+            # Prune MCTS tree so that root = board state
+            mcts.prune_search_tree(board)
+        
+        if board.winner == player_ID:
+            mc_player_ws += 1
+    print("After running", games, "games, player 1 won", mc_player_ws)
+# Full RL agent test.
 def RL_agent_test_2():
     # Params
-    learning_rate = 0.15 
+    learning_rate = 0.2
     k = 3
-    layers = [10, 10, 10] 
-    eps = 0.4
-    sim_time = 5 # 4
-    RBUF_size = 64 # 64
-    mbs = 32 # 32
-    epoch = 100
+    layers = []         # t1. [] # t2. [50] # out [30, 30, 30] 
+    eps = 1             # How random the rollouts are. Decay over the training.
+    sim_time = 2        # How accurate the training data is.
+    RBUF_size = 1000    # How much training data we can have.
+    mbs = 1000          # How much data we train on at once.
+    actual_games = 100  # More => more training data.
+    epochs = 1000       # How much fitting we want, beware of the overfit.
+    interval = 10       # 
     
     # Create the agent
     agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
     print("Agent created with a NN actor.")
     
     # Train the agents actor
-    agent.run_training_sim(epoch, 10, verbose=True) # 100
+    agent.run_training_sim(actual_games, interval, epochs, verbose=True) # 100
     print("Agent is trained!") 
     
     # Test the agent vs a random agent!
     random = Actor.Random_actor(k)  # p1, a new random actor
     trained = agent.actor           # p2
     board = hb.hex_board(k)         # The board to play on
-    p2_w = 0                        # Keep track of p2 victories
+    p1_w = 0                        # Keep track of p2 victories
     games = 1000
     print("============================================")
     print("============== TIME TO FIGHT! ==============")
     print("============================================")
-    
     for i in range(games): # Play games games
         # Reset the board. New game.
         board.initialize_states() 
         
         while board.game_over == False:
             # The player whos turn it is takes makes a move.
-            if board.player_turn==1: # The random player starts.
+            if board.player_turn==2: # The random player starts.
                 move_dist = random.move_distribution(board.flatten_state())
             else: # The trained player
-                if board.player_turn!=2:
+                if board.player_turn!=1:
                     raise Exception("No ones turn!")
                 move_dist = trained.move_distribution(board.flatten_state())
             # Normalize the distribution.
@@ -139,11 +228,9 @@ def RL_agent_test_2():
             board.make_move((row, col))
 
         #print("Round",i+1," was won by player:", board.winner)
-        if board.winner == 2:
-            p2_w += 1
-    
-    print("After",games,"games. The trained player won:",p2_w)
-
+        if board.winner == 1:
+            p1_w += 1
+    print("After",games,"games. The trained player won:",p1_w)
 
 #########################################
 ############### OLD TESTS ###############
@@ -377,13 +464,14 @@ def MCTS_one_actual_game_test(animate=True):
 
 def RL_agent_test():
     # Params
-    learning_rate = 0.2 
+    learning_rate = 0.5 
     k = 3
     layers = [10,10] 
     eps = 0.4
     sim_time = 2 # 4
-    RBUF_size = 250 # 64
-    mbs = 120 # 32
+    # Don't use these anymore, new approach.
+    RBUF_size = 0 # 64
+    mbs = 0 # 32
     
     # Create the agent
     agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
@@ -449,7 +537,9 @@ def test_possible_moves():
 #new_MCTS_single_sims()
 #new_MCTS_one_actual_game()
 RL_agent_test_2()
-
+#MCTS_optimality_test(player_ID=1)
+#MCTS_optimality_test(player_ID=2)
+#Test_the_D(player_ID=2) # had about 90% wr as p2.
 
 ### Integrated tests
 #RL_agent_test()

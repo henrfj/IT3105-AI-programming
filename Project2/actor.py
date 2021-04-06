@@ -54,15 +54,14 @@ class Actor:
     def move_distribution(self, flat_state):
         '''Return the move distribution, numpy array'''
         prediction = self.model.predict(flat_state.reshape((1,len(flat_state))))[0]
-        #print("The prediction:", prediction)
         return prediction
 
-    def train(self, inputs, targets, mbs):
+    def train(self, inputs, targets, mbs, epochs):
         '''Fit the model based on a random minibatch taken from the replay buffer. Inputs is a flattened board state with player ID,
             while targets is the D - generated distribution.'''
-        #print("INPUT dimensions:", inputs.shape)
-        #print("TARGETS dimensions:", targets.shape)
-        self.model.fit(inputs, targets, epochs=5, batch_size=len(inputs)) # send all inputs and targets in one batch.
+        if mbs!=len(inputs):
+            raise Exception("Wrongly formatted input.")
+        self.model.fit(inputs, targets, epochs=epochs, batch_size=mbs) # Send all inputs and targets in one batch. We train many times, so no need for multiple epochs.
         
 
 class Random_actor:
