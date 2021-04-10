@@ -2,6 +2,7 @@
 import numpy as np # States kept as np arrays.
 from copy import deepcopy
 
+
 class hex_board:
     '''
     Hex board. Game logic. State manager.
@@ -14,12 +15,12 @@ class hex_board:
         # Init / reset function
         self.initialize_states()
 
-    def initialize_states(self):
+    def initialize_states(self, starting_player=1):
         '''Initialize all states. Can be used to reset game.'''
         k = self.k
         
         # ID 1 (p1) and 2 (p2) for whos turn it is.
-        self.player_turn = 1       
+        self.player_turn = starting_player       
         
         # 2D array. Contains 0s, 1s and 2s. Player 1, 2 and empty.
         self.state = np.zeros((k,k))            
@@ -40,8 +41,8 @@ class hex_board:
         for row in range(self.k):
             for col in range(self.k):
                 flat[row*self.k+col+1] = self.state[row][col]
-        # Add ID tag.
-        flat[0] = self.player_turn
+        # Add ID tag. 
+        flat[0] = float(self.player_turn)
         #return flat.reshape((1,len(flat))) # Ready for model inputting.
         return flat
 
@@ -119,7 +120,7 @@ class hex_board:
 
         # change player turn / player ID
         if self.player_turn == 1:
-            self.player_turn = 2
+            self.player_turn = -1
         else:
             self.player_turn = 1
 
@@ -142,7 +143,7 @@ class hex_board:
             else: # No edge
                 self.edge_connections[row][col] = (0,0) # No edge
         # Player 2 has the left and right edges. State[:][0] and state [:][k-1]
-        elif player_ID == 2:
+        elif player_ID == -1:
             if col == 0: # Left
                 self.edge_connections[row][col] = (1,0)
             elif col == self.k-1: # Right
@@ -234,7 +235,7 @@ class hex_board:
 
     def final_state(self, player_ID, pos):
         ''' Cheks for V by looking for a (1,1) in the edge_connection
-        Player ID: {1,2}
+        Player ID: {player.one,player.two}
         Pos: (row,col)'''
         if self.edge_connections[pos[0]][pos[1]][0] == 1 and self.edge_connections[pos[0]][pos[1]][1] == 1:
             if self.verbose:

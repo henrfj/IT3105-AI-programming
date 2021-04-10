@@ -1,9 +1,3 @@
-# My own modules
-import hex_board as hb
-import hex_display as hd
-import mcts as MC
-import actor as Actor
-from RL_agent import Agent
 
 # Others modules
 import matplotlib.pyplot as plt # Plotting
@@ -11,16 +5,115 @@ import networkx as nx # Network graph
 from matplotlib import animation # Animating network graphs
 import numpy as np # Efficient arrays
 from copy import deepcopy # Deep copies
+import time # Taking time, check performance.
+import tensorflow.keras as ker # NN library
+
+# My own modules
+import hex_board as hb
+import hex_display as hd
+import mcts as MC
+import actor as Actor
+from RL_agent import Agent
+from topp import TOPP
 
 #########################################
-############### NEW TESTS ###############
+############### DEMO RUNS ###############
 #########################################
+
+# Parameter demo. Show how the system works under several pivotal parameters.
+def pivotal_parameters_demo():
+    '''Generate agent -> train -> Run small TOP + Showcase games (display)'''
+    ##################################################################################################
+    ## NN MCTS TRAINING PARAMETERS
+    learning_rate = 0.02                # Learning rate of NN
+    activation = "tanh"                 # Activation function
+    optimizer = ker.optimizers.SGD      # Optimizer used 
+    k = 4                               # Size of board
+    layers = [50, 50, 50]               # Structure of NN
+    eps = 1                             # How random the rollouts are. Decay over the training.
+    sim_time = 1                        # How accurate the training data is.
+    RBUF_size = 512                     # How much training data we can have.
+    mbs = 50                            # How much data we can train on at once, after each actual game.
+    actual_games = 40                   # More => more training data.
+    epochs = 10                         # How much fitting we want, beware of the overfit.
+    ## TOPP PARAMS
+    save_model = True                   # Save away models for TOPP
+    topp_models = 5                     # No. Topp models stored away during training.
+    interval = actual_games/topp_models # Saving away agents for TOPP
+    topp_games = 100                    # Games played in TOP
+    ## DISPLAY GAME PARAMETERS
+    visualize_topp_games = True         # Wether or not we want to visualize topp gameplay
+    agent_to_watch = [(0,5)]            # The IDs of players we want to see fight! ID is 0-->topp_models
+
+
+    ##################################################################################################
+    # Create the agent, mode 2 (NN actor)
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation, optimizer=optimizer)
+    # Train the agents actor, 
+    agent_paths = agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=save_model) 
+    print("Agent is trained!") 
+    # Play in the TOP tournament
+    topp = TOPP(k)
+    topp.stochastic_round_robin(agent_paths, topp_games, interval=interval)
+
+# Demo the training -> saving models -> Topp
+def Complete_demo_of_system():
+    '''Generate agent -> train -> Run small TOP + Showcase games (display)'''
+    learning_rate = 0.02                # Learning rate of NN
+    k = 4                               # Size of board
+    layers = [50, 50, 50]               # Structure of NN
+    eps = 1                             # How random the rollouts are. Decay over the training.
+    sim_time = 1                        # How accurate the training data is.
+    RBUF_size = 512                     # How much training data we can have.
+    mbs = 50                            # How much data we can train on at once, after each actual game.
+    actual_games = 40                   # More => more training data.
+    epochs = 10                         # How much fitting we want, beware of the overfit.
+    topp_models = 5                     # No. Topp models stored away during training.
+    interval = actual_games/topp_models # Saving away agents for TOPP
+    activation = "tanh"                 # Activation function
+    G = 100                             # Games played in TOP
+
+    # Create the agent, mode 2 (NN actor)
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation)
+    # Train the agents actor, 
+    agent_paths = agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=True) 
+    print("Agent is trained!") 
+    # Play in the TOP tournament
+    topp = TOPP(k)
+    topp.stochastic_round_robin(agent_paths, G, interval=interval)
+
+# Demo the TOPP system on pre-trained models.
+def TOPP_agent_demo():
+    ## INPUT PARAMETERS
+    k = 5       # Size of board being played in tournament.
+    games = 100 # No. games played between each player of the tounrmanet.
+    # Paths to agents participating.
+    agent_paths = ["./test_model_0.0","./test_model_20.0","./test_model_40.0","./test_model_60.0","./test_model_80.0","./test_model_100.0",]
+    #agent_paths = ["./topp_model_0.0", "./topp_model_20.0", "./topp_model_40.0", "./topp_model_60.0", "./topp_model_80.0", "./topp_model_100.0"]
+    topp = TOPP(k)
+    topp.stochastic_round_robin(agent_paths, games, interval=40)
+
+##########################################################
+###################### DEMO METHODS ######################
+##########################################################
+
+#pivotal_parameters_demo()
+#Complete_demo_of_system()
+#TOPP_agent_demo()
+
+#########################################################
+###################### OTHER TESTS ######################
+#########################################################
+
+############################################
+############### System tests ###############
+############################################
 #
 def new_MCTS_single_sims():
     k = 3
     board = hb.hex_board(k)
     actor = Actor.Random_actor(k)
-    mcts = MC.BOOK_MCTS(0.2, board, actor, 1)
+    mcts = MC.MCTS(0.2, board, actor, 1)
     print("Running 1 single sims:")
     for i in range(1):
         mcts.single_simulation(i, 0.4)
@@ -55,7 +148,7 @@ def new_MCTS_one_actual_game():
     # Instances used.
     actor = Actor.Random_actor(k)
     board = hb.hex_board(k) # Actual game board
-    mcts = MC.BOOK_MCTS(0.1, board, actor)
+    mcts = MC.MCTS(0.1, board, actor)
     display = hd.hex_display(frame_delay, figsize)
 
     # Animation sequence
@@ -89,12 +182,12 @@ def new_MCTS_one_actual_game():
 def MCTS_optimality_test(player_ID):
     # Setup.
     k = 6 # board dimensions.
-    s = 4 # time of each simulation, in seconds.
+    s = 2 # time of each simulation, in seconds.
     games = 20 # Games played between the two.
     # Instances used.
     actor = Actor.Random_actor(k)
     board = hb.hex_board(k) # Actual game board
-    mcts = MC.BOOK_MCTS(0.1, board, actor)
+    mcts = MC.MCTS(0.1, board, actor)
     # Winner counter
     mc_player_ws = 0
     # Run the games
@@ -134,21 +227,28 @@ def MCTS_optimality_test(player_ID):
 # Assume MCTS optimal. See if using the D to pick moves is also optimal strategy.
 def Test_the_D(player_ID):
     # Setup.
-    k = 3 # board dimensions.
+    k = 6 # board dimensions.
     s = 2 # time of each simulation, in seconds.
     games = 100 # Games played between the two.
     # Instances used.
     actor = Actor.Random_actor(k)
     board = hb.hex_board(k) # Actual game board
-    mcts = MC.BOOK_MCTS(0.1, board, actor)
-    agent = Agent(0.2, [], k, 0.2, 2, 512, 200) # Just used to test the D
+    mcts = MC.MCTS(0.1, board, actor)
+    agent = Agent(0.2, [], k, 0.2, 2, 512, 200, 1) # Just used to test the D
     # Winner counter
     mc_player_ws = 0
     # Run the games
+    starting_player=-1
     for i in range(games):
-        print("========================\nGame number:", i,", Player",player_ID,"has won:",mc_player_ws,"\n========================")
+        print("========================\nGame number:", i,", Player",player_ID,"has won:",mc_player_ws)
+        # Alternate starting turn
+        if starting_player==-1:
+            starting_player = 1
+        else:
+            starting_player = -1
+        print("Starting player is player:", starting_player,"\n========================")
         # Reset mcts, all nodes removed.
-        board.initialize_states()
+        board.initialize_states(starting_player=starting_player)
         mcts.initialize(board)
         # Run the game
         while not board.game_over:
@@ -164,34 +264,34 @@ def Test_the_D(player_ID):
             else: # Other player
                 best_move = board.random_move()
 
-
+            # Make the move
             board.make_move(best_move)
             # Prune MCTS tree so that root = board state
             mcts.prune_search_tree(board)
         
         if board.winner == player_ID:
             mc_player_ws += 1
-    print("After running", games, "games, player 1 won", mc_player_ws)
-# Full RL agent test.
-def RL_agent_test_2():
-    # Params
-    learning_rate = 0.2
-    k = 3
-    layers = []         # t1. [] # t2. [50] # out [30, 30, 30] 
-    eps = 1             # How random the rollouts are. Decay over the training.
-    sim_time = 2        # How accurate the training data is.
-    RBUF_size = 1000    # How much training data we can have.
-    mbs = 1000          # How much data we train on at once.
-    actual_games = 100  # More => more training data.
-    epochs = 1000       # How much fitting we want, beware of the overfit.
-    interval = 10       # 
+    print("After running", games, "games, player",player_ID,"won", mc_player_ws)
+# Full RL agent test, random actor.
+def RL_agent_test_1():
+    # Train in the end, random algorithm.
+    learning_rate = 0.1
+    k = 4
+    layers = [10,10,10]             # 
+    eps = 1                         # How random the rollouts are. Decay over the training.
+    sim_time = 2                   # How accurate the training data is.
+    RBUF_size = 200                  # How much training data we can have.
+    mbs = RBUF_size                        # How much data we can train on at once.
+    actual_games = 10               # More => more training data.
+    epochs = 10                  # How much fitting we want, beware of the overfit.
+    interval = 10                   # Saving away agents for TOPP
     
-    # Create the agent
-    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
-    print("Agent created with a NN actor.")
+    # Create the agent, mode 1
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, mode=1)
+    print("Agent created with a random actor.")
     
     # Train the agents actor
-    agent.run_training_sim(actual_games, interval, epochs, verbose=True) # 100
+    agent.random_training_sim(actual_games, interval, epochs, verbose=True) # 100
     print("Agent is trained!") 
     
     # Test the agent vs a random agent!
@@ -203,13 +303,14 @@ def RL_agent_test_2():
     print("============================================")
     print("============== TIME TO FIGHT! ==============")
     print("============================================")
+    print("Performance as p1:")
     for i in range(games): # Play games games
         # Reset the board. New game.
         board.initialize_states() 
         
         while board.game_over == False:
             # The player whos turn it is takes makes a move.
-            if board.player_turn==2: # The random player starts.
+            if board.player_turn==-1: # The random player starts.
                 move_dist = random.move_distribution(board.flatten_state())
             else: # The trained player
                 if board.player_turn!=1:
@@ -231,11 +332,250 @@ def RL_agent_test_2():
         if board.winner == 1:
             p1_w += 1
     print("After",games,"games. The trained player won:",p1_w)
+    p2_w = 0 
+    print("Performance as p2:")
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=-1:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
 
-#########################################
-############### OLD TESTS ###############
-#########################################
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
 
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == -1:
+            p2_w += 1
+    print("After",games,"games. The trained player won:",p2_w)
+# Full RL agent test, NN actor.
+def RL_agent_test_2():
+    # Train as intended.
+    learning_rate = 0.05                # Learning rate of NN
+    k = 6                               # Size of board
+    layers = [20,20,20,20,20]       # Structure of NN
+    eps = 1                             # How random the rollouts are. Decay over the training.
+    sim_time = 10                       # How accurate the training data is.
+    RBUF_size = 512                     # How much training data we can have.
+    mbs = 200                           # How much data we can train on at once, after each actual game.
+    actual_games = 400                  # More => more training data.
+    epochs = 20                         # How much fitting we want, beware of the overfit.
+    topp_models = 5                     # No. Topp models stored away during training.
+    interval = actual_games/topp_models # Saving away agents for TOPP
+    activation = "tanh"  
+
+
+    # Create the agent, mode 2
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation)
+    print("Agent created with a NN actor.")
+    
+    # Train the agents actor
+    agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=False) 
+    print("Agent is trained!") 
+    
+    # Test the agent vs a random agent!
+    random = Actor.Random_actor(k)  # p1, a new random actor
+    trained = agent.actor           # p2
+    board = hb.hex_board(k)         # The board to play on
+    p1_w = 0                        # Keep track of p2 victories
+    games = 1000
+    print("============================================")
+    print("============== TIME TO FIGHT! ==============")
+    print("============================================")
+    print("Performance as p1:")
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==-1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=1:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
+
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == 1:
+            p1_w += 1
+    print("After",games,"games. The trained player won:",p1_w)
+    p2_w = 0 
+    print("Performance as p2:")
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=-1:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
+
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == -1:
+            p2_w += 1
+    print("After",games,"games. The trained player won:",p2_w)
+# Generate and test agents for TOPP demo.
+def TOPP_generate_agents_for_demo():
+    '''Generate the 5x5 agents for topp demo.'''
+    # Train as intended.
+    learning_rate = 0.05                # Learning rate of NN
+    k = 5                               # Size of board
+    layers = [50, 50, 50]               # Structure of NN
+    eps = 1                             # How random the rollouts are. Decay over the training.
+    sim_time = 5                        # How accurate the training data is.
+    RBUF_size = 512                     # How much training data we can have.
+    mbs = 50                            # How much data we can train on at once, after each actual game.
+    actual_games = 200                  # More => more training data.
+    epochs = 100                        # How much fitting we want, beware of the overfit.
+    topp_models = 5                     # No. Topp models stored away during training.
+    interval = actual_games/topp_models # Saving away agents for TOPP
+    activation = "tanh"  
+    G = 100
+
+    # Create the agent, mode 2
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation)
+    
+    # Train the agents actor
+    agent_paths = agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=True) # 100
+    print("Agent is trained!") 
+    
+    # Test the agent vs a random agent!
+    random = Actor.Random_actor(k)  # p1, a new random actor
+    trained = agent.actor           # p2
+    board = hb.hex_board(k)         # The board to play on
+    p1_w = 0                        # Keep track of p2 victories
+    games = 1000
+    print("==============================================")
+    print("============== FIGHT VS RANDOM! ==============")
+    print("==============================================")
+    print("Performance as p1:")
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==-1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=1:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
+
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == 1:
+            p1_w += 1
+    print("After",games,"games. The trained player won:",p1_w)
+    p2_w = 0 
+    print("Performance as p2:")
+    for i in range(games): # Play games games
+        # Reset the board. New game.
+        board.initialize_states() 
+        
+        while board.game_over == False:
+            # The player whos turn it is takes makes a move.
+            if board.player_turn==1: # The random player starts.
+                move_dist = random.move_distribution(board.flatten_state())
+            else: # The trained player
+                if board.player_turn!=-1:
+                    raise Exception("No ones turn!")
+                move_dist = trained.move_distribution(board.flatten_state())
+            # Normalize the distribution.
+            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
+            norm_moves = legal_moves / np.sum(legal_moves)
+
+            # Completely greedy move.
+            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
+            row = index//k
+            col = index%k
+
+            # Make the move
+            board.make_move((row, col))
+
+        #print("Round",i+1," was won by player:", board.winner)
+        if board.winner == -1:
+            p2_w += 1
+    print("After",games,"games. The trained player won:",p2_w)
+    print("============================================")
+    print("============== FIGHT IN TOPP! ==============")
+    print("============================================")
+    topp = TOPP(k)
+    topp.stochastic_round_robin(agent_paths, G, interval=interval)
+# Use saved data from random_training to test parameters
+def train_on_saved_data():
+    '''Used saved data from random_training to test learning rates.'''
+    pass
+# Run a single series between random actors to check for biases.
+def test_single_series():
+    k = 6
+    no_games = 10000
+    topp = TOPP(k)
+    start_time = time.time()
+    print("Pitting two random actors against each other for",no_games,"games, on a",k,"x",k,"board.")
+    print("They should win equally many games, as they swap who goes first.")
+    # Make two random agents, they should get 50/50 scores.
+    random1 = Actor.Random_actor(k)
+    random2 = Actor.Random_actor(k)
+    pw1 = topp.single_series(random1, random2, no_games)
+    #pw1 = topp.stochastic_single_series(random1, random2, no_games)
+    print("Winrates were:", pw1,"/",no_games-pw1)
+    print("That took:", time.time()-start_time)
+# 
+###############################################
+############### Component tests ###############
+###############################################
 def random_walk_animate(animate=True):
     ''' Animate random walk to test board logic and displat'''
     # PARAMETERs
@@ -266,7 +606,7 @@ def random_walk_animate(animate=True):
         #print(board.edge_connections)
         display.animate_episode(episode, board_size)
     return board.winner
-
+#
 def random_walk_check_bias(num):
     p1 = 0
     p2 = 0
@@ -279,7 +619,7 @@ def random_walk_check_bias(num):
     print("Running,",num," random games, where P1 started each time:")
     print("P1:", p1, "\t=>", p1*100/(p1+p2), "% winrate")
     print("P2:", p2, "\t=>", p2*100/(p1+p2), "% winrate")
-
+#
 def hash_and_compare():
     dic={}
     board1 = hb.hex_board(10)
@@ -326,7 +666,8 @@ def hash_and_compare():
     print(board3)
     print(board4)
     print("Is board3 == board4?", board3==board4)
-  
+  #
+#
 def test_max():
     l = [1, 2, 3, 4, 9, 5, 6, 7]
     i = 1
@@ -346,7 +687,7 @@ def test_max():
     print("# 2 ")
     l_2 = ["hei", "på", "deg", "ja"]
     print("max 2:", max(l_2, key=g))
-
+#
 def test_copy_method():
     board1 = hb.hex_board(5)
     board2 = board1 # Is this a copy or the same one?
@@ -374,34 +715,19 @@ def test_copy_method():
         raise Exception("Board 3 should be a deepcopy...")
     else:
         print("deepcopy() makes a new, independent instance.")
-
+#
 def test_flatten():
     board = hb.hex_board(4)
     print(board.flatten_state())
     board.make_move((0,0))
+    print(board.flatten_state())
     board.make_move((1,1))
+    print(board.flatten_state())
     board.make_move((2,2))
+    print(board.flatten_state())
     board.make_move((3,3))
     print(board.flatten_state())
-
-def MCTS_single_test():
-    # Setup.
-    k = 6 # board dimensions
-    s = 2 # time in seconds
-    # Instances used.
-    actor = Actor.Random_actor(k)
-    board = hb.hex_board(k)
-    mcts = MC.MCTS(0.1, board, actor)
-    
-    # Run simulations, look for result
-    mcts.simulate_timed(s, progress=0) 
-    print("No. Parents", len(list(mcts.children.keys())))
-    print("N-keys:", len(mcts.N.keys()))
-    print("Q-keys:", len(list(mcts.Q.keys())))
-    print("N_v-keys:", len(mcts.N_v.keys()))
-    print("Max edges:", len(list(mcts.children.keys())) * (k*k)) # 
-    print("Max nodes:", len(list(mcts.children.keys())) * k*k + 1) # +1 is the root
-
+#
 def hex_board_child_test():
     k= 11
     board = hb.hex_board(k)
@@ -410,117 +736,7 @@ def hex_board_child_test():
     print("For a "+str(k)+"x"+str(k)+" board, there should be " +str(k*k) +" possible moves, and therefor " +str(k*k) +" children:")
     print("Length of possible moves:", len(possible_moves))
     print("No. children generated:", len(l))
-
-def MCTS_one_actual_game_test(animate=True):
-    ''' Uses statistics from MCTS directly to make moves'''
-    
-    # Setup.
-    k = 6 # board dimensions
-    s = 2 # time of each simulation, in seconds
-    frame_delay = 500
-    figsize = (8,8)
-    # Instances used.
-    actor = Actor.Random_actor(k)
-    board = hb.hex_board(k) # Actual game board
-    mcts = MC.MCTS(0.1, board, actor)
-    display = hd.hex_display(frame_delay, figsize)
-
-    # Animation sequence
-    episode = [board.state]
-
-    # Run simulations
-    mcts.simulate_timed(s, progress=0, verbose=True) 
-    possible_moves = board.possible_moves_pos()
-
-    while not board.game_over:
-        m = 0
-        best_index = 0
-        for i in range(len(possible_moves)):
-            score = mcts.N_v[(hash(board), possible_moves[i])]
-            if score > m:
-                m = score
-                best_index = i
-        
-        # Apply "best" move
-        best_move = possible_moves[best_index]
-        board.make_move(best_move)
-        episode.append(board.state)
-
-        # Prune MCTS tree so that root = board state
-        mcts.prune_search_tree(board)
-        if not board.game_over:
-            # Run a new sim
-            mcts.simulate_timed(s, progress=0, verbose=True)
-            possible_moves = board.possible_moves_pos()
-
-
-    print("The winner of the actual game is player "+str(board.winner)+"!")
-    print("The MCTS simulation tree grew to this size:")
-    print("Parent nodes:", len(mcts.children.keys()))
-    print("Total nodes:", len(mcts.N.keys()), ", out of", len(mcts.children.keys())*k**2,' "possible" nodes.')
-    print("The winning board looked like this:\n",board.state)
-    if animate:
-        display.animate_episode(episode, k)
-
-def RL_agent_test():
-    # Params
-    learning_rate = 0.5 
-    k = 3
-    layers = [10,10] 
-    eps = 0.4
-    sim_time = 2 # 4
-    # Don't use these anymore, new approach.
-    RBUF_size = 0 # 64
-    mbs = 0 # 32
-    
-    # Create the agent
-    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs)
-    print("Agent created with a NN actor.")
-    
-    # Train the agents actor
-    agent.run_training_sim(100, 10, verbose=True) # 100
-    print("Agent is trained!") 
-    
-    # Test the agent vs a random agent!
-    random = Actor.Random_actor(k)  # p1, a new random actor
-    trained = agent.actor           # p2
-    board = hb.hex_board(k)         # The board to play on
-    p2_w = 0                        # Keep track of p2 victories
-    games = 1000
-    print("============================================")
-    print("============== TIME TO FIGHT! ==============")
-    print("============================================")
-    
-    for i in range(games): # Play games games
-        # Reset the board. New game.
-        board.initialize_states() 
-        
-        while board.game_over == False:
-            # The player whos turn it is takes makes a move.
-            if board.player_turn==1: # The random player starts.
-                move_dist = random.move_distribution(board.flatten_state())
-            else: # The trained player
-                if board.player_turn!=2:
-                    raise Exception("No ones turn!")
-                move_dist = trained.move_distribution(board.flatten_state())
-            # Normalize the distribution.
-            legal_moves =  np.multiply(move_dist, board.possible_moves) # Remove impossible moves.
-            norm_moves = legal_moves / np.sum(legal_moves)
-
-            # Completely greedy move.
-            index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
-            row = index//k
-            col = index%k
-
-            # Make the move
-            board.make_move((row, col))
-
-        #print("Round",i+1," was won by player:", board.winner)
-        if board.winner == 2:
-            p2_w += 1
-    
-    print("After",games,"games. The trained player won:",p2_w)
-
+#
 def test_possible_moves():
     board = hb.hex_board(6)
     moves = []
@@ -532,28 +748,25 @@ def test_possible_moves():
         board.make_move(move)
     print("Winner:", board.winner)
     print(board)
-
 # Fresh
 #new_MCTS_single_sims()
 #new_MCTS_one_actual_game()
-RL_agent_test_2()
+#RL_agent_test_1() # Random actor, save in end.
+#RL_agent_test_2() # NN actor, train as we go.
+#TOPP_generate_agents_for_demo()
+#test_single_series()
 #MCTS_optimality_test(player_ID=1)
-#MCTS_optimality_test(player_ID=2)
-#Test_the_D(player_ID=2) # had about 90% wr as p2.
-
+#MCTS_optimality_test(player_ID=-1)
+#Test_the_D(player_ID=1) # had about 90% wr as p2.
 ### Integrated tests
-#RL_agent_test()
-#MCTS_one_actual_game_test()
 #random_walk_animate() 
 #random_walk_check_bias(1000)
-
 ### Component TESTS
 #MCTS_single_test()
 #hex_board_child_test()
 #test_max()
 #test_copy_method()
 #hash_and_compare()
-
 ### Single function tests
 #test_flatten()
 #test_possible_moves()
