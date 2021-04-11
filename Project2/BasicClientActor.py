@@ -9,8 +9,15 @@ class BasicClientActor(BasicClientActorAbs):
 
     def __init__(self, IP_address=None, verbose=True):
         self.series_id = -1
-        BasicClientActorAbs.__init__(self, IP_address, verbose=verbose)
-        self.actor = TOPP_Actor(keras.models.load_model("./power_model_3")) # Currently best model
+        BasicClientActorAbs.__init__(self, IP_address, verbose=verbose)         ##### TRIAL SCORE #####
+        # RL 1 algorithm
+        #self.actor = TOPP_Actor(keras.models.load_model("./power_model"))      # => 86/100 
+        #self.actor = TOPP_Actor(keras.models.load_model("./power_model_2"))    # => 82/100 score in trial run.
+        #self.actor = TOPP_Actor(keras.models.load_model("./power_model_3"))    # => 96/100 score in trial run.
+        
+        # RL2 algorighm
+        #self.actor = TOPP_Actor(keras.models.load_model("./iron_man"))         # => 90/100 score in trial run.
+        #self.actor = TOPP_Actor(keras.models.load_model("./iron_man_mk_2"))    # => 92/100 score in trial run.
 
     # The shit
     def handle_get_action(self, state):
@@ -26,8 +33,12 @@ class BasicClientActor(BasicClientActorAbs):
         # 1 Make sure state is a np array.
         state = np.array(state)
         # 2 Get the possible moves from state:
-        possible_moves = state[1:] # the first is just an ID
-        for i in range(possible_moves):
+        possible_moves = np.copy(state[1:]) # the first is just an ID
+        k = np.sqrt(len(possible_moves))
+        #print("==============================")
+        #print("POSSBLE MOVES:", possible_moves)
+        #print("k:", k)
+        for i in range(len(possible_moves)):
             if possible_moves[i] == 0:
                 possible_moves[i] = 1
             else:
@@ -41,9 +52,12 @@ class BasicClientActor(BasicClientActorAbs):
         norm_moves = legal_moves / np.sum(legal_moves)
         # 6 Completely greedy move.
         index = np.argmax(norm_moves) # Index of the best move, given a 1D board.
-        row = index//self.k
-        col = index%self.k
+        #print("INDEX:", index)
+        row = int(index//k)
+        col = int(index%k)
         next_move = (row, col)
+        #print("NEXT MOVE:", next_move)
+        #print("==============================")
         # 7 Return the move
         return next_move
 

@@ -5,8 +5,8 @@ from matplotlib import animation # Animating network graphs
 import numpy as np # Efficient arrays
 
 ### TESTING - ROTATION?
-from matplotlib.transforms import Affine2D
-import mpl_toolkits.axisartist.floating_axes as floating_axes
+#from matplotlib.transforms import Affine2D
+#import mpl_toolkits.axisartist.floating_axes as floating_axes
 
 
 class hex_display:
@@ -85,7 +85,7 @@ class hex_display:
             if state[row][col] == 1:
                 # Its p1 piece
                 color_map.append("red")
-            elif state[row][col] == 2:
+            elif state[row][col] == -1:
                 # Its p2 piece
                 color_map.append("black")
             elif state[row][col] == 0:

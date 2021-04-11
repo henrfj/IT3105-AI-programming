@@ -8,11 +8,13 @@ import tensorflow.keras as ker
 from actor import Actor, Random_actor
 from mcts import MCTS
 from hex_board import hex_board as hb
+from hex_display import hex_display
 
 class Agent:
     '''The MCTS RL agent'''
 
-    def __init__(self, alpha : float, layer_dimensions : list, k : int, epsilon : float, s : int, RBUF_size : int, mbs : int, mode=2, activation="tanh", optimizer=ker.optimizers.SGD):
+    def __init__(self, alpha : float, layer_dimensions : list, k : int, epsilon : float, s : int, RBUF_size : int, mbs : int,
+     mode=2, activation="tanh", optimizer=ker.optimizers.SGD, frame_delay=500, figsize=(15,15)):
         # Params.
         self.s = s                              # Seconds to run a MCTS simulation before choosing move.
         self.k = k                              # Board size. 
@@ -29,6 +31,9 @@ class Agent:
         else:
             print("---------Using random actor---------")
             self.mcts = MCTS(epsilon, self.board, Random_actor(self.k)) # For generating training data.
+
+        # Visualization of training
+        self.display = hex_display(frame_delay, figsize)
 
     def random_training_sim(self, actual_games : int, interval : int, epochs : int,  verbose=False):
         '''Run an actual_games-number of episodes. This uses a random mcts actor, and is used to debug not for actual demo.
@@ -96,17 +101,16 @@ class Agent:
             print("Using what we got...")
         
         print("Saving model to disk.")
-        self.actor.model.save("./power_model_3")
+        self.actor.model.save("./power_model_4")
         print("Saving data to disk.")
-        ## save to csv file
-        np.savetxt('feature_BUF.csv', feature_BUF, delimiter=',')
-        np.savetxt('target_BUF.csv', target_BUF, delimiter=',')
+        ### save to csv file
+        #np.savetxt('feature_BUF.csv', feature_BUF, delimiter=',')
+        #np.savetxt('target_BUF.csv', target_BUF, delimiter=',')
     
-    def NN_training_sim(self, actual_games : int, interval : int, epochs : int,  verbose=False, save_model=False):
+    def NN_training_sim(self, actual_games : int, interval : int, epochs : int,  verbose=False, save_model=False, visualize_training=False, episodes_to_watch=[]):
         '''Run an actual_games-number of episodes, uses the NN actor and trains underways.
         If self.mbs = self.RBUF_size we just use the most recent to train.
         '''
-        
         # 1, 2
         ## Initialize replay buffer, made big enough
         model_paths = []
@@ -114,6 +118,7 @@ class Agent:
         target_BUF = np.empty((self.RBUF_size, (self.k**2)), dtype=float)      # For target distributions, D
         q = 0 # Index of least recently added case.
         wrap_around = False # Have we filled RBUF?
+        display_episode = [] # In case we want to display an episode
 
         # 3
         # Initialize actor, already done - suppose each agent only has one actor: 1-1
@@ -122,8 +127,10 @@ class Agent:
         # 4
         # Run the number of actual games, dictated by actual_games
         for i in range(actual_games):
+            # Verbosity 
             if verbose==True:
-                print("Progress: "+str(i*100/actual_games)+"%")
+                print("Training progress: "+str(i*100/actual_games)+"%")
+
             # a, b Change starting player
             if starting_player == 1:
                 starting_player = -1
@@ -161,13 +168,20 @@ class Agent:
                 best_move = all_moves[np.argmax(D)] # The highest index of D, is the best move.
                 self.board.make_move(best_move)
                 
+                # Save in case we want to display it
+                if visualize_training and i in episodes_to_watch:
+                    display_episode.append(self.board.state)
+
+
                 
-            ## e Train based on the last couple of cases.
+                
+            ## e TRAIN based on the last couple of cases.
             print("======================\nTRAINING\n======================")
+            # Method 1. Mbs = RBUF_size
             if wrap_around and self.mbs==self.RBUF_size:
                 print("Training on all the most recent data.")
-                self.actor.train(feature_BUF, target_BUF, mbs=self.mbs, epochs=epochs) # Assuming RBUF size = mbs!
-
+                self.actor.train(feature_BUF, target_BUF, mbs=self.mbs, epochs=epochs) 
+            # Method 2. Mbs < RBUF
             elif (q >= self.mbs or wrap_around) and (self.mbs < self.RBUF_size):
                 print("Training on minibatches of data.")
                 if wrap_around:
@@ -177,7 +191,7 @@ class Agent:
             else:
                 print("Not enough data to train yet.")
 
-            ## f Save model for TOPP. Also saves the untrained net.
+            ## f Save model for TOPP. Also saves the untrained net (net 0).
             if (i==0 or (i+1)%interval == 0) and (save_model):
                 print("Saving model to disk.")
                 if i != 0:
@@ -188,6 +202,14 @@ class Agent:
                     print("This is done at episode no.",i)
                     model_paths.append("./demo_model_"+str((i)*100/actual_games))
                     self.actor.model.save("./demo_model_"+str((i)*100/actual_games))
+
+            ### g Visualize training episode, if required.
+            if visualize_training and i in episodes_to_watch:
+                print("=========================================")
+                print("Visualizing training episode no.",i)
+                print("=========================================")
+                self.display.animate_episode(display_episode, self.k)
+                display_episode = [] # Reset
 
         #self.actor.model.save("./iron_man_mk_2")    
         return model_paths
@@ -210,10 +232,3 @@ class Agent:
         D = D / np.sum(D)
         #return D
         return D
-
-    def gen_random_minibatch(self, inputs, targets, mbs):
-        '''Generate random minibatch of size mbs'''
-        indices = np.random.randint(len(inputs), size=mbs)
-        return inputs[indices], targets[indices]
-
-                

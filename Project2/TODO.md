@@ -7,9 +7,9 @@
 # This has worked!
 - Cooking right now:
 ==> output: 
-==> T1: 
+==> T1: POWER MODEL 4!
 ==> T2: 
-==> T3: Iron man 2 - with alternating starting players and improved training regime.
+==> T3: 
 
 - Ideas: lower learning rate. Only patterns that keeps repeating will be recognized!
         => Using mbs param! Dont do say 100 epochs of one mbs! Do 100 different mbs from RBUF!
