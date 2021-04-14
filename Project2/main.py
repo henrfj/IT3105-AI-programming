@@ -27,29 +27,29 @@ def pivotal_parameters_demo():
     ##################################################################################################
     ##################################################################################################
     ## NN MCTS TRAINING PARAMETERS
-    learning_rate = 0.02                # Learning rate of NN
-    activation = "tanh"                 # Activation function
-    optimizer = ker.optimizers.SGD      # Optimizer used 
-    k = 4                               # Size of board
-    layers = [50, 50, 50]               # Structure of NN
-    eps = 1                             # How random the rollouts are. Decay over the training.
-    sim_time = 1                        # How accurate the training data is.
-    RBUF_size = 512                     # How much training data we can have.
-    mbs = 50                            # How much data we can train on at once, after each actual game.
-    actual_games = 40                   # More => more training data.
-    epochs = 10                         # How much fitting we want, beware of the overfit.
-    ## TOPP PARAMS
-    save_model = True                   # Save away models for TOPP
-    topp_models = 5                     # No. Topp models stored away during training.
-    interval = actual_games/topp_models # Saving away agents for TOPP
-    topp_games = 100                    # Games played in TOP
+    learning_rate = 0.02                    # Learning rate of NN
+    activation = "tanh"                     # Activation function
+    optimizer = ker.optimizers.SGD          # Optimizer used 
+    k = 4                                   # Size of board
+    layers = [50, 50, 50]                   # Structure of NN
+    eps = 1                                 # How random the rollouts are. Decay over the training.
+    sim_time = 1                            # How accurate the training data is.
+    RBUF_size = 512                         # How much training data we can have.
+    mbs = 16                                # How much data we can train on at once, after each actual game.
+    actual_games = 40                       # More => more training data.
+    epochs = 20                             # How much fitting we want, beware of the overfit.
+    ## TOPP PARAMS  
+    save_model = True                       # Save away models for TOPP
+    topp_models = 5                         # No. Topp models stored away during training.
+    interval = actual_games/topp_models     # Saving away agents for TOPP
+    topp_games = 100                        # Games played in TOPP
     ## DISPLAY GAME PARAMETERS
-    frame_delay = 500                   # ms frame delay
-    figsize = (15, 15)                  # Dimensions of animation
-    visualize_topp_games = True         # Wether or not we want to visualize topp gameplay
-    agent_to_watch = [(0,5), (2,3)]     # The IDs of players we want to see fight! ID is 0-->#topp_models
-    visualize_training = True           # Wether or not we want to visualize training gameplay
-    episodes_to_watch = [0, 18]         # The no. of the training episodes we want to see.
+    frame_delay = 1000                      # ms frame delay
+    figsize = (15, 15)                      # Dimensions of animation
+    visualize_topp_games = True             # Wether or not we want to visualize topp gameplay
+    agent_to_watch = [(5,0), (5,2),(1,0)]   # The IDs of players we want to see fight! ID is 0-->#topp_models
+    visualize_training = True               # Wether or not we want to visualize training gameplay
+    episodes_to_watch = [0, 4, 39]          # The no. of the training episodes we want to see.
     ##################################################################################################
     ##################################################################################################
     ##################################################################################################
@@ -60,33 +60,46 @@ def pivotal_parameters_demo():
     # Play in the TOP tournament
     topp = TOPP(k, frame_delay=frame_delay, figsize=figsize)
     topp.stochastic_round_robin(agent_paths, topp_games, interval=interval, visualize_topp_games=visualize_topp_games, agent_to_watch=agent_to_watch)
-
 # Demo the training -> saving models -> Topp
 def Complete_demo_of_system():
     '''Generate agent -> train -> Run small TOP + Showcase games (display)'''
+    ##################################################################################################
+    ##################################################################################################
+    ##################################################################################################
+    ## NN MCTS TRAINING PARAMETERS
     learning_rate = 0.02                # Learning rate of NN
+    activation = "tanh"                 # Activation function
+    optimizer = ker.optimizers.SGD      # Optimizer used 
     k = 4                               # Size of board
     layers = [50, 50, 50]               # Structure of NN
     eps = 1                             # How random the rollouts are. Decay over the training.
     sim_time = 1                        # How accurate the training data is.
     RBUF_size = 512                     # How much training data we can have.
-    mbs = 50                            # How much data we can train on at once, after each actual game.
+    mbs = 32                            # How much data we can train on at once, after each actual game.
     actual_games = 40                   # More => more training data.
-    epochs = 10                         # How much fitting we want, beware of the overfit.
+    epochs = 20                         # How much fitting we want, beware of the overfit.
+    ## TOPP PARAMS
+    save_model = True                   # Save away models for TOPP
     topp_models = 5                     # No. Topp models stored away during training.
     interval = actual_games/topp_models # Saving away agents for TOPP
-    activation = "tanh"                 # Activation function
-    G = 100                             # Games played in TOP
-
+    topp_games = 100                    # Games played in TOP
+    ## DISPLAY GAME PARAMETERS
+    frame_delay = 1000                  # ms frame delay
+    figsize = (15, 15)                  # Dimensions of animation
+    visualize_topp_games = False        # Wether or not we want to visualize topp gameplay
+    agent_to_watch = [(0,5), (2,3)]     # The IDs of players we want to see fight! ID is 0-->#topp_models
+    visualize_training = False          # Wether or not we want to visualize training gameplay
+    episodes_to_watch = [0, 4, 39]      # The no. of the training episodes we want to see.
+    ##################################################################################################
+    ##################################################################################################
+    ##################################################################################################
     # Create the agent, mode 2 (NN actor)
-    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation)
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation, optimizer=optimizer, frame_delay=frame_delay, figsize=figsize)
     # Train the agents actor, 
-    agent_paths = agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=True) 
-    print("Agent is trained!") 
+    agent_paths = agent.NN_training_sim(actual_games, interval, epochs, verbose=True, save_model=save_model, visualize_training=visualize_training, episodes_to_watch=episodes_to_watch) 
     # Play in the TOP tournament
-    topp = TOPP(k)
-    topp.stochastic_round_robin(agent_paths, G, interval=interval)
-
+    topp = TOPP(k, frame_delay=frame_delay, figsize=figsize)
+    topp.stochastic_round_robin(agent_paths, topp_games, interval=interval, visualize_topp_games=visualize_topp_games, agent_to_watch=agent_to_watch)
 # Demo the TOPP system on pre-trained models.
 def TOPP_agent_demo():
     ## INPUT PARAMETERS
@@ -94,7 +107,7 @@ def TOPP_agent_demo():
     games = 100                         # No. games played between each player of the tounrmanet.
     frame_delay = 500                   # ms per frame
     figsize = (15,15)                   # Dimensions of display figure
-    visualize_topp_games = True         # Visualize or not
+    visualize_topp_games = False        # Visualize or not
     agent_to_watch=[(0,5), (2,3)]       # What agents we want to see fight it out.
 
     # Paths to agents participating.
@@ -109,7 +122,7 @@ def TOPP_agent_demo():
 ###################### DEMO METHODS ######################
 ##########################################################
 
-pivotal_parameters_demo()
+#pivotal_parameters_demo()
 #Complete_demo_of_system()
 #TOPP_agent_demo()
 
@@ -287,15 +300,15 @@ def Test_the_D(player_ID):
 # Full RL agent test, random actor.
 def RL_agent_test_1():
     # Train in the end, random algorithm.
-    learning_rate = 0.01
+    learning_rate = 0.1
     k = 6
-    layers = [60,60,60,60]             # 
-    eps = 1                         # How random the rollouts are. Decay over the training.
+    layers = [80,80,80]             # 
+    eps = 0                         # How random the rollouts are. Decay over the training.
     sim_time = 15                   # How accurate the training data is.
-    RBUF_size = 5000                  # How much training data we can have.
-    mbs = RBUF_size                        # How much data we can train on at once.
-    actual_games = 200               # More => more training data.
-    epochs = 20000                  # How much fitting we want, beware of the overfit.
+    RBUF_size = 5000                # How much training data we can have.
+    mbs = RBUF_size                 # How much data we can train on at once.
+    actual_games = 350              # More => more training data.
+    epochs = 30000                  # How much fitting we want, beware of the overfit.
     interval = 10                   # Saving away agents for TOPP
     
     # Create the agent, mode 1
@@ -377,22 +390,22 @@ def RL_agent_test_1():
 # Full RL agent test, NN actor.
 def RL_agent_test_2():
     # Train as intended.
-    learning_rate = 0.05                # Learning rate of NN
+    learning_rate = 0.02                # Learning rate of NN
     k = 6                               # Size of board
-    layers = [20,20,20,20,20]       # Structure of NN
+    layers = [60,60,60]                 # Structure of NN
     eps = 1                             # How random the rollouts are. Decay over the training.
     sim_time = 10                       # How accurate the training data is.
     RBUF_size = 512                     # How much training data we can have.
-    mbs = 200                           # How much data we can train on at once, after each actual game.
-    actual_games = 400                  # More => more training data.
-    epochs = 20                         # How much fitting we want, beware of the overfit.
+    mbs = 32                            # How much data we can train on at once, after each actual game.
+    actual_games = 600                  # More => more training data.
+    epochs = 10                         # How much fitting we want, beware of the overfit.
     topp_models = 5                     # No. Topp models stored away during training.
     interval = actual_games/topp_models # Saving away agents for TOPP
     activation = "tanh"  
-
+    optimizer = ker.optimizers.Adam
 
     # Create the agent, mode 2
-    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation)
+    agent = Agent(learning_rate, layers, k, eps, sim_time, RBUF_size, mbs, 2, activation=activation, optimizer=optimizer)
     print("Agent created with a NN actor.")
     
     # Train the agents actor

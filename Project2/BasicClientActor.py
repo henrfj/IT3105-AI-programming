@@ -10,14 +10,18 @@ class BasicClientActor(BasicClientActorAbs):
     def __init__(self, IP_address=None, verbose=True):
         self.series_id = -1
         BasicClientActorAbs.__init__(self, IP_address, verbose=verbose)         ##### TRIAL SCORE #####
+        
         # RL 1 algorithm
         #self.actor = TOPP_Actor(keras.models.load_model("./power_model"))      # => 86/100 
         #self.actor = TOPP_Actor(keras.models.load_model("./power_model_2"))    # => 82/100 score in trial run.
-        #self.actor = TOPP_Actor(keras.models.load_model("./power_model_3"))    # => 96/100 score in trial run.
-        
+        #self.actor = TOPP_Actor(keras.models.load_model("./power_model_3"))    # => 96/100 score in trial run. 87.0 in real run. [(2246887, 1, 28, 22), (2020, 2, 22, 28)]
+        #self.actor = TOPP_Actor(keras.models.load_model("./power_model_4"))     # => 98/100 in trial run. Score was 80.5 in real run. [(2246887, 1, 15, 35), (2020, 2, 35, 15)]
+
         # RL2 algorighm
         #self.actor = TOPP_Actor(keras.models.load_model("./iron_man"))         # => 90/100 score in trial run.
         #self.actor = TOPP_Actor(keras.models.load_model("./iron_man_mk_2"))    # => 92/100 score in trial run.
+        self.actor = TOPP_Actor(keras.models.load_model("./iron_man_mk_3"))    # => 96/100 score in trial run. 72 in actual run.
+
 
     # The shit
     def handle_get_action(self, state):

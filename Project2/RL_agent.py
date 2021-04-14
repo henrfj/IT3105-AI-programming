@@ -49,21 +49,15 @@ class Agent:
 
         # 3
         # Initialize actor, already done - suppose each agent only has one actor: 1-1
-        starting_player = 1 # ! Alternate who starts !
 
         # 4
         # Run the number of actual games, dictated by actual_games
         for i in range(actual_games):
             if verbose==True:
                 print("Progress: "+str(i*100/actual_games)+"%")
-            # a, b Alternate starting player
-            if starting_player == 1:
-                starting_player = -1
-            else:
-                starting_player = 1
             # c, d
             # Initialize empty game board, reset MCTS. ¯\_(ツ)_/¯ ( ͡° ͜ʖ ͡°)
-            self.board.initialize_states(starting_player=starting_player)
+            self.board.initialize_states()
             self.mcts.initialize(self.board)
 
             # d
@@ -101,7 +95,7 @@ class Agent:
             print("Using what we got...")
         
         print("Saving model to disk.")
-        self.actor.model.save("./power_model_4")
+        self.actor.model.save("./power_model_5")
         print("Saving data to disk.")
         ### save to csv file
         #np.savetxt('feature_BUF.csv', feature_BUF, delimiter=',')
@@ -122,7 +116,6 @@ class Agent:
 
         # 3
         # Initialize actor, already done - suppose each agent only has one actor: 1-1
-        starting_player = 1
 
         # 4
         # Run the number of actual games, dictated by actual_games
@@ -131,14 +124,10 @@ class Agent:
             if verbose==True:
                 print("Training progress: "+str(i*100/actual_games)+"%")
 
-            # a, b Change starting player
-            if starting_player == 1:
-                starting_player = -1
-            else:
-                starting_player = 1
+            # a, b 
             # c, d
             # Initialize empty game board, reset MCTS. ¯\_(ツ)_/¯ ( ͡° ͜ʖ ͡°)
-            self.board.initialize_states(starting_player=starting_player)
+            self.board.initialize_states()
             self.mcts.initialize(self.board)
             
 
@@ -185,9 +174,17 @@ class Agent:
             elif (q >= self.mbs or wrap_around) and (self.mbs < self.RBUF_size):
                 print("Training on minibatches of data.")
                 if wrap_around:
-                    self.actor.train(feature_BUF, target_BUF, mbs=self.mbs, epochs=epochs)
+                    #for j in range(epochs):
+                    #    features, targets = self.gen_random_minibatch(feature_BUF, target_BUF, mbs=self.mbs)
+                    #    self.actor.train(features, targets, mbs=self.mbs, epochs=1)
+                    self.actor.train(feature_BUF, target_BUF, mbs=self.mbs, epochs=epochs) # 
+
                 else: # Not wrapped around yet
+                    #for j in range(epochs):
+                    #    features, targets = self.gen_random_minibatch(feature_BUF[:q], target_BUF[:q], mbs=self.mbs)
+                    #    self.actor.train(features, targets, mbs=self.mbs, epochs=1)
                     self.actor.train(feature_BUF[:q], target_BUF[:q], mbs=self.mbs, epochs=epochs)
+
             else:
                 print("Not enough data to train yet.")
 
@@ -211,7 +208,7 @@ class Agent:
                 self.display.animate_episode(display_episode, self.k)
                 display_episode = [] # Reset
 
-        #self.actor.model.save("./iron_man_mk_2")    
+        #self.actor.model.save("./iron_man_mk_4")    
         return model_paths
 
     def get_the_D(self, node_ID, all_moves, visitation_count):
@@ -232,3 +229,7 @@ class Agent:
         D = D / np.sum(D)
         #return D
         return D
+
+    def gen_random_minibatch(self, inputs, targets, mbs=1):
+        indices = np.random.randint(len(inputs), size=mbs)
+        return inputs[indices], targets[indices]

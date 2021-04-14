@@ -2,10 +2,10 @@
 import numpy as np
 from collections import defaultdict
 import time
-###
-import hex_board as hb
 from copy import deepcopy
-from actor import Actor
+### My own modules
+import hex_board as hb      # The board logics
+from actor import Actor     # Default policy
 
 
 # New MCTS, based on book.
